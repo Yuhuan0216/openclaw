@@ -1,5 +1,4 @@
 import type { RuntimeEnv } from "../../runtime.js";
-import type { ModelRow } from "./list.types.js";
 import { modelsListLogic } from "./list.logic.js";
 import { printModelTable } from "./list.table.js";
 import { ensureFlagCompatibility } from "./shared.js";
@@ -24,6 +23,10 @@ export async function modelsListCommand(
 
   if (error) {
     runtime.error(error);
+    if (rows.length === 0) {
+      process.exitCode = 1;
+      return;
+    }
   }
 
   if (rows.length === 0) {

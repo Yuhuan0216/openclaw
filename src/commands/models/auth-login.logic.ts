@@ -6,11 +6,17 @@ import {
   resolveDefaultAgentId,
 } from "../../agents/agent-scope.js";
 import { upsertAuthProfile } from "../../agents/auth-profiles.js";
-import { normalizeProviderId } from "../../agents/model-selection.js";
 import { resolveDefaultAgentWorkspaceDir } from "../../agents/workspace.js";
-import { readConfigFileSnapshot, type OpenClawConfig } from "../../config/config.js";
+import { formatCliCommand } from "../../cli/command-format.js";
+import { readConfigFileSnapshot } from "../../config/config.js";
 import { resolvePluginProviders } from "../../plugins/providers.js";
 import { applyAuthProfileConfig } from "../onboard-auth.js";
+import {
+  applyDefaultModel,
+  mergeConfigPatch,
+  pickAuthMethod,
+  resolveProviderMatch,
+} from "../provider-auth-helpers.js";
 import { updateConfig } from "./shared.js";
 
 // Helper Types
@@ -79,80 +85,26 @@ export async function prepareLoginEnv() {
   return { config, agentDir, workspaceDir, providers };
 }
 
-// --- Helpers ---
-
-function resolveProviderMatch(
+export function resolveRequestedLoginProviderOrThrow(
   providers: ProviderPlugin[],
   rawProvider?: string,
 ): ProviderPlugin | null {
-  const raw = rawProvider?.trim();
-  if (!raw) {
+  const requested = rawProvider?.trim();
+  if (!requested) {
     return null;
   }
-  const normalized = normalizeProviderId(raw);
-  return (
-    providers.find((provider) => normalizeProviderId(provider.id) === normalized) ??
-    providers.find(
-      (provider) =>
-        provider.aliases?.some((alias) => normalizeProviderId(alias) === normalized) ?? false,
-    ) ??
-    null
+  const matched = resolveProviderMatch(providers, requested);
+  if (matched) {
+    return matched;
+  }
+  const available = providers
+    .map((provider) => provider.id)
+    .filter(Boolean)
+    .toSorted((a, b) => a.localeCompare(b));
+  const availableText = available.length > 0 ? available.join(", ") : "(none)";
+  throw new Error(
+    `Unknown provider "${requested}". Loaded providers: ${availableText}. Verify plugins via \`${formatCliCommand("openclaw plugins list --json")}\`.`,
   );
-}
-
-function pickAuthMethod(provider: ProviderPlugin, rawMethod?: string) {
-  const raw = rawMethod?.trim();
-  if (!raw) {
-    return null;
-  }
-  const normalized = raw.toLowerCase();
-  return (
-    provider.auth.find((method) => method.id.toLowerCase() === normalized) ??
-    provider.auth.find((method) => method.label.toLowerCase() === normalized) ??
-    null
-  );
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
-
-function mergeConfigPatch<T>(base: T, patch: unknown): T {
-  if (!isPlainRecord(base) || !isPlainRecord(patch)) {
-    return patch as T;
-  }
-  const next: Record<string, unknown> = { ...base };
-  for (const [key, value] of Object.entries(patch)) {
-    const existing = next[key];
-    if (isPlainRecord(existing) && isPlainRecord(value)) {
-      next[key] = mergeConfigPatch(existing, value);
-    } else {
-      next[key] = value;
-    }
-  }
-  return next as T;
-}
-
-function applyDefaultModel(cfg: OpenClawConfig, model: string): OpenClawConfig {
-  const models = { ...cfg.agents?.defaults?.models };
-  models[model] = models[model] ?? {};
-  const existingModel = cfg.agents?.defaults?.model;
-  return {
-    ...cfg,
-    agents: {
-      ...cfg.agents,
-      defaults: {
-        ...cfg.agents?.defaults,
-        models,
-        model: {
-          ...(existingModel && typeof existingModel === "object" && "fallbacks" in existingModel
-            ? { fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks }
-            : undefined),
-          primary: model,
-        },
-      },
-    },
-  };
 }
 
 export function credentialMode(credential: AuthProfileCredential): "api_key" | "oauth" | "token" {

@@ -1,11 +1,14 @@
 import type { Api, Model } from "@mariozechner/pi-ai";
+import type { ModelRegistry } from "../../agents/pi-model-discovery.js";
 import type { ModelRow } from "./list.types.js";
 import { ensureAuthProfileStore } from "../../agents/auth-profiles.js";
+import { resolveForwardCompatModel } from "../../agents/model-forward-compat.js";
 import { parseModelRef } from "../../agents/model-selection.js";
+import { resolveModel } from "../../agents/pi-embedded-runner/model.js";
 import { loadConfig, type OpenClawConfig } from "../../config/config.js";
 import { resolveConfiguredEntries } from "./list.configured.js";
 import { loadModelRegistry, toModelRow } from "./list.registry.js";
-import { DEFAULT_PROVIDER, modelKey } from "./shared.js";
+import { DEFAULT_PROVIDER, isLocalBaseUrl, modelKey } from "./shared.js";
 
 export type ModelsListOptions = {
   all?: boolean;
@@ -28,17 +31,21 @@ export async function modelsListLogic(
   })();
 
   let models: Model<Api>[] = [];
+  let modelRegistry: ModelRegistry | undefined;
   let availableKeys: Set<string> | undefined;
   let error: string | undefined;
 
   try {
     const loaded = await loadModelRegistry(cfg);
+    modelRegistry = loaded.registry;
     models = loaded.models;
     availableKeys = loaded.availableKeys;
+    if (loaded.availabilityErrorMessage !== undefined) {
+      error = `Model availability lookup failed; falling back to auth heuristics for discovered models: ${loaded.availabilityErrorMessage}`;
+    }
   } catch (err) {
-    // In logic layer, we capture the error but still return rows derived from config if possible.
-    // This allows partial results (e.g. static config) even if registry fails.
-    error = `Model registry unavailable: ${String(err)}`;
+    // Registry completely failed — no model data available, fail fast.
+    return { rows: [], error: `Model registry unavailable: ${String(err)}` };
   }
 
   const modelByKey = new Map(models.map((model) => [modelKey(model.provider, model.id), model]));
@@ -47,22 +54,6 @@ export async function modelsListLogic(
   const configuredByKey = new Map(entries.map((entry) => [entry.key, entry]));
 
   const rows: ModelRow[] = [];
-
-  const isLocalBaseUrl = (baseUrl: string) => {
-    try {
-      const url = new URL(baseUrl);
-      const host = url.hostname.toLowerCase();
-      return (
-        host === "localhost" ||
-        host === "127.0.0.1" ||
-        host === "0.0.0.0" ||
-        host === "::1" ||
-        host.endsWith(".local")
-      );
-    } catch {
-      return false;
-    }
-  };
 
   if (opts.all) {
     const sorted = [...models].toSorted((a, b) => {
@@ -99,7 +90,21 @@ export async function modelsListLogic(
       if (providerFilter && entry.ref.provider.toLowerCase() !== providerFilter) {
         continue;
       }
-      const model = modelByKey.get(entry.key);
+      let model = modelByKey.get(entry.key);
+      if (!model && modelRegistry) {
+        const forwardCompat = resolveForwardCompatModel(
+          entry.ref.provider,
+          entry.ref.model,
+          modelRegistry,
+        );
+        if (forwardCompat) {
+          model = forwardCompat;
+          modelByKey.set(entry.key, forwardCompat);
+        }
+      }
+      if (!model && modelRegistry) {
+        model = resolveModel(entry.ref.provider, entry.ref.model, undefined, cfg).model;
+      }
       if (opts.local && model && !isLocalBaseUrl(model.baseUrl)) {
         continue;
       }

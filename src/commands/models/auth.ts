@@ -16,7 +16,9 @@ import {
   handleLoginResult,
   prepareLoginEnv,
   resolveLoginTarget,
+  resolveRequestedLoginProviderOrThrow,
 } from "./auth-login.logic.js";
+export { resolveRequestedLoginProviderOrThrow } from "./auth-login.logic.js";
 import { resolveDefaultTokenProfileId, saveTokenProfile } from "./auth-token.logic.js";
 
 const confirm = (params: Parameters<typeof clackConfirm>[0]) =>
@@ -225,23 +227,26 @@ export async function modelsAuthLoginCommand(opts: LoginOptions, runtime: Runtim
 
   const prompter = createClackPrompter();
 
-  // Resolve provider (CLI arg or interactive)
-  let selectedProvider = resolveLoginTarget(providers, opts).provider;
-  if (!selectedProvider) {
-    const id = await prompter.select({
-      message: "Select a provider",
-      options: providers.map((provider) => ({
-        value: provider.id,
-        label: provider.label,
-        hint: provider.docsPath ? `Docs: ${provider.docsPath}` : undefined,
-      })),
-    });
-    selectedProvider = providers.find((p) => p.id === String(id))!;
-  }
+  // Resolve provider (CLI arg or interactive; throws on unknown --provider)
+  const requestedProvider = resolveRequestedLoginProviderOrThrow(providers, opts.provider);
+  const selectedProvider =
+    requestedProvider ??
+    (await prompter
+      .select({
+        message: "Select a provider",
+        options: providers.map((provider) => ({
+          value: provider.id,
+          label: provider.label,
+          hint: provider.docsPath ? `Docs: ${provider.docsPath}` : undefined,
+        })),
+      })
+      .then((id) => {
+        const target = resolveLoginTarget(providers, { provider: String(id) });
+        return target.provider;
+      }));
 
   if (!selectedProvider) {
-    // Should be caught above, but for safety
-    throw new Error("Unknown provider.");
+    throw new Error("Unknown provider. Use --provider <id> to pick a provider plugin.");
   }
 
   // Resolve method (CLI arg or interactive)

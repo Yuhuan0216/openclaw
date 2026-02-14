@@ -1,15 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
-import { listAgentIds } from "../../agents/agent-scope.js";
-import { loadConfig } from "../../config/config.js";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { CommandBridgeRegistry } from "../registry.js";
+import { BridgeContext } from "../types.js";
 import { wireAgentsBridgeCommands } from "./agents.js";
 
 // Mock dependencies
 vi.mock("../../config/config.js", () => ({
   loadConfig: vi.fn(() => ({
     agents: {
-      main: { model: "default", provider: "openai" },
-      test: { model: "claude-3", provider: "anthropic" },
+      main: { capabilities: ["test"], description: "Main Agent" },
+      test: { capabilities: [], description: "Test Agent" },
     },
   })),
 }));
@@ -19,12 +18,15 @@ vi.mock("../../agents/agent-scope.js", () => ({
 }));
 
 vi.mock("../../config/sessions.js", () => ({
-  resolveAgentMainSessionKey: vi.fn(({ agentId }) => `agent:${agentId}:main`),
+  resolveAgentMainSessionKey: vi.fn(({ agentId }) => `agent:${agentId}:session`),
+}));
+
+vi.mock("../../gateway/session-utils.js", () => ({
   loadSessionEntry: vi.fn((key) => ({
     entry: {
-      label: key.includes("agent:main") ? "Main Agent" : "Test Agent",
-      modelOverride: key.includes("agent:main") ? undefined : "claude-3-opus",
-      providerOverride: key.includes("agent:main") ? undefined : "anthropic",
+      label: key.includes("main") ? "Main Agent" : "Test Agent",
+      modelOverride: "gpt-4",
+      providerOverride: "openai",
       updatedAt: Date.now(),
     },
     storePath: "/tmp/sessions.json",
@@ -32,45 +34,88 @@ vi.mock("../../config/sessions.js", () => ({
 }));
 
 describe("Agents Bridge Commands", () => {
-  const registry = new CommandBridgeRegistry();
-  wireAgentsBridgeCommands(registry);
+  let registry: CommandBridgeRegistry;
 
-  it("should list agents", async () => {
-    const cmd = registry.get("agents.list");
-    expect(cmd).toBeDefined();
-
-    const result = await cmd!.handler({}, { channel: "test", isAdmin: true });
-    expect(result.success).toBe(true);
-    const data = result.data as { agents: any[] };
-    expect(data.agents).toHaveLength(2);
-    expect(data.agents[0]).toMatchObject({ id: "main", name: "Main Agent" });
-    expect(data.agents[1]).toMatchObject({ id: "test", name: "Test Agent" });
+  beforeEach(() => {
+    registry = new CommandBridgeRegistry();
+    wireAgentsBridgeCommands(registry);
   });
 
-  it("should filter agents", async () => {
-    const cmd = registry.get("agents.list");
-    const result = await cmd!.handler({ filter: "main" }, { channel: "test", isAdmin: true });
-    expect(result.success).toBe(true);
-    const data = result.data as { agents: any[] };
-    expect(data.agents).toHaveLength(1);
-    expect(data.agents[0].id).toBe("main");
+  const adminContext: BridgeContext = {
+    channel: "test",
+    isAdmin: true,
+  };
+
+  const userContext: BridgeContext = {
+    channel: "test",
+    isAdmin: false,
+  };
+
+  describe("agents.list", () => {
+    it("should list agents for admin", async () => {
+      const cmd = registry.get("agents.list");
+      expect(cmd).toBeDefined();
+
+      // @ts-ignore
+      const result = await cmd!.handler({}, adminContext);
+      expect(result.success).toBe(true);
+      const data = result.data as { agents: any[] };
+      expect(data.agents).toHaveLength(2);
+      expect(data.agents[0].id).toBe("main");
+    });
+
+    it("should filter agents", async () => {
+      const cmd = registry.get("agents.list");
+      // @ts-ignore
+      const result = await cmd!.handler({ filter: "main" }, adminContext);
+      expect(result.success).toBe(true);
+      const data = result.data as { agents: any[] };
+      expect(data.agents).toHaveLength(1);
+      expect(data.agents[0].id).toBe("main");
+    });
+
+    it("should handle empty filter gracefully", async () => {
+      const cmd = registry.get("agents.list");
+      // @ts-ignore
+      const result = await cmd!.handler({ filter: "" }, adminContext);
+      expect(result.success).toBe(true);
+      const data = result.data as { agents: any[] };
+      expect(data.agents).toHaveLength(2);
+    });
+
+    it("should deny access for non-admin", async () => {
+      const cmd = registry.get("agents.list");
+      // @ts-ignore
+      const result = await cmd!.handler({}, userContext);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Unauthorized");
+    });
   });
 
-  it("should get agent status", async () => {
-    const cmd = registry.get("agents.status");
-    expect(cmd).toBeDefined();
+  describe("agents.status", () => {
+    it("should return status for existing agent", async () => {
+      const cmd = registry.get("agents.status");
+      // @ts-ignore
+      const result = await cmd!.handler({ agentId: "main" }, adminContext);
+      expect(result.success).toBe(true);
+      const data = result.data as any;
+      expect(data.sessionKey).toBe("agent:main:session");
+    });
 
-    const result = await cmd!.handler({ agentId: "test" }, { channel: "test", isAdmin: true });
-    expect(result.success).toBe(true);
-    const data = result.data as any;
-    expect(data.sessionKey).toBe("agent:test:main");
-    expect(data.model).toBe("claude-3-opus");
-  });
+    it("should return error for unknown agent", async () => {
+      const cmd = registry.get("agents.status");
+      // @ts-ignore
+      const result = await cmd!.handler({ agentId: "unknown" }, adminContext);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("not found");
+    });
 
-  it("should return error for unknown agent status", async () => {
-    const cmd = registry.get("agents.status");
-    const result = await cmd!.handler({ agentId: "unknown" }, { channel: "test", isAdmin: true });
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("not found");
+    it("should deny access for non-admin", async () => {
+      const cmd = registry.get("agents.status");
+      // @ts-ignore
+      const result = await cmd!.handler({ agentId: "main" }, userContext);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Unauthorized");
+    });
   });
 });

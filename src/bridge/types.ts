@@ -56,5 +56,8 @@ export type BridgeCommand<TArgs = unknown> = {
 export type BridgeRegistry = {
   register<T>(command: BridgeCommand<T>): void;
   unregister(name: string): boolean;
+  has(name: string): boolean;
   get(name: string): BridgeCommand | undefined;
+  getAll(): BridgeCommand[];
+  clear(): void;
 };

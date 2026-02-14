@@ -7,7 +7,7 @@
 # 1. Setup minimal environment for Bun & OpenClaw CLI
 # Attempt to find user home dynamically if not set
 if [ -z "$HOME" ]; then
-  export HOME=$(getent passwd $(whoami) | cut -d: -f6)
+    export HOME=$(getent passwd $(whoami) | cut -d: -f6)
 fi
 
 # Add common paths for Bun/Node/Homebrew
@@ -15,10 +15,10 @@ export PATH="$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/
 
 # Load NVM (if available) to ensure `node` is available if needed by openclaw
 if [ -d "$HOME/.nvm/versions/node" ]; then
-  NVM_NODE=$(find "$HOME/.nvm/versions/node" -maxdepth 1 -type d | sort -V | tail -n1)
-  if [ -n "$NVM_NODE" ]; then
-    export PATH="$NVM_NODE/bin:$PATH"
-  fi
+    NVM_NODE=$(find "$HOME/.nvm/versions/node" -maxdepth 1 -type d | sort -V | tail -n1)
+    if [ -n "$NVM_NODE" ]; then
+        export PATH="$NVM_NODE/bin:$PATH"
+    fi
 fi
 
 # 2. Navigate to repo root (one level up from scripts/)

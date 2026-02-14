@@ -1,26 +1,28 @@
 import { Command } from "commander";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
-import type { BridgeContext } from "../bridge/types.js";
+import { wireAgentsBridgeCommands } from "../bridge/commands/agents.js";
 import { wireModelsBridgeCommands } from "../bridge/commands/models.js";
 import { bridgeRegistry } from "../bridge/registry.js";
+import { BridgeContext } from "../bridge/types.js";
+
+// Wire new modules explicitly
+wireAgentsBridgeCommands(bridgeRegistry);
+wireModelsBridgeCommands(bridgeRegistry);
 
 // Schema for Bridge Input
 const BridgeInputSchema = z.object({
   action: z.string(),
-  args: z.record(z.string(), z.any()).optional(),
+  args: z.record(z.any()).optional(),
   context: z
     .object({
       channel: z.string().optional(),
       userId: z.string().optional(),
       isAdmin: z.boolean().optional(),
-      metadata: z.record(z.string(), z.any()).optional(),
+      metadata: z.record(z.any()).optional(),
     })
     .optional(),
 });
-
-// Wire all command modules explicitly
-wireModelsBridgeCommands(bridgeRegistry);
 
 export function registerBridgeCommand(program: Command) {
   program
@@ -35,6 +37,7 @@ export function registerBridgeCommand(program: Command) {
         if (opts.file) {
           inputStr = readFileSync(opts.file, "utf-8");
         } else if (!inputStr && !process.stdin.isTTY) {
+          // Read from STDIN
           const chunks = [];
           for await (const chunk of process.stdin) {
             chunks.push(chunk);
@@ -60,18 +63,19 @@ export function registerBridgeCommand(program: Command) {
           process.exit(1);
         }
 
-        // 4. Validate args against command schema (if defined)
+        // 4. Context & Args
+        const context: BridgeContext = {
+          channel: input.context?.channel ?? "cli",
+          userId: input.context?.userId,
+          isAdmin: input.context?.isAdmin ?? true, // Default to true for CLI access
+          metadata: input.context?.metadata,
+        };
+
         const validatedArgs = command.schema
           ? command.schema.parse(input.args ?? command.defaultArgs ?? {})
           : (input.args ?? {});
 
         // 5. Execute
-        const context: BridgeContext = {
-          channel: input.context?.channel ?? "cli",
-          userId: input.context?.userId,
-          isAdmin: input.context?.isAdmin ?? true,
-          metadata: input.context?.metadata,
-        };
         const result = await command.handler(validatedArgs, context);
 
         // 6. Output

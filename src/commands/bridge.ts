@@ -4,6 +4,7 @@ import { z } from "zod";
 import { wireAgentsBridgeCommands } from "../bridge/commands/agents.js";
 import { wireModelsBridgeCommands } from "../bridge/commands/models.js";
 import { bridgeRegistry } from "../bridge/registry.js";
+import { BridgeContext } from "../bridge/types.js";
 
 // Wire new modules explicitly
 wireAgentsBridgeCommands(bridgeRegistry);
@@ -13,7 +14,14 @@ wireModelsBridgeCommands(bridgeRegistry);
 const BridgeInputSchema = z.object({
   action: z.string(),
   args: z.record(z.any()).optional(),
-  context: z.record(z.any()).optional(),
+  context: z
+    .object({
+      channel: z.string().optional(),
+      userId: z.string().optional(),
+      isAdmin: z.boolean().optional(),
+      metadata: z.record(z.any()).optional(),
+    })
+    .optional(),
 });
 
 export function registerBridgeCommand(program: Command) {
@@ -55,10 +63,22 @@ export function registerBridgeCommand(program: Command) {
           process.exit(1);
         }
 
-        // 4. Execute
-        const result = await command.handler(input.args ?? {}, input.context);
+        // 4. Context & Args
+        const context: BridgeContext = {
+          channel: input.context?.channel ?? "cli",
+          userId: input.context?.userId,
+          isAdmin: input.context?.isAdmin ?? true, // Default to true for CLI access
+          metadata: input.context?.metadata,
+        };
 
-        // 5. Output
+        const validatedArgs = command.schema
+          ? command.schema.parse(input.args ?? command.defaultArgs ?? {})
+          : (input.args ?? {});
+
+        // 5. Execute
+        const result = await command.handler(validatedArgs, context);
+
+        // 6. Output
         console.log(JSON.stringify(result, null, 2));
       } catch (err) {
         console.error(JSON.stringify({ success: false, error: String(err) }));

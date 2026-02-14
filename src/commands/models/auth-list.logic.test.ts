@@ -45,7 +45,6 @@ describe("modelsAuthListLogic", () => {
 
   it("should filter by provider", async () => {
     const result = await modelsAuthListLogic({ provider: "openai" });
-    console.log("DEBUG profiles:", JSON.stringify(result.profiles, null, 2));
     expect(result.profiles).toHaveLength(1);
     expect(result.profiles[0].id).toContain("openai");
   });

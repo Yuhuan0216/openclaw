@@ -7,10 +7,22 @@ interface BridgeResponse<T = unknown> {
   view?: string;
 }
 
+interface BridgeContext {
+  channel: string;
+  userId?: string;
+  isAdmin: boolean;
+  metadata?: Record<string, unknown>;
+}
+
 export class OpenClawClient {
   constructor(private binPath: string = process.env.OPENCLAW_BIN || "openclaw") {}
 
-  async execute<T>(action: string, args: Record<string, unknown> = {}): Promise<BridgeResponse<T>> {
+  async execute<T>(
+    action: string,
+    args: Record<string, unknown> = {},
+    context: Partial<BridgeContext> = {},
+    timeoutMs: number = 5000,
+  ): Promise<BridgeResponse<T>> {
     const isTsFile = this.binPath.endsWith(".ts");
     const isJsFile = this.binPath.endsWith(".js");
     const cmd = isTsFile ? "npx" : isJsFile ? "node" : this.binPath;
@@ -21,18 +33,27 @@ export class OpenClawClient {
         : ["bridge"];
 
     return new Promise((resolve, reject) => {
+      // Allow caller to override defaults, but default to safe values if not provided
+      const ctx: BridgeContext = {
+        channel: "opencode-client",
+        isAdmin: true, // Legacy default, but now overridable
+        ...context,
+      };
+
       const payload = JSON.stringify({
         action,
         args,
-        context: {
-          channel: "opencode-client",
-          isAdmin: true,
-        },
+        context: ctx,
       });
 
       const child = spawn(cmd, cmdArgs, {
         stdio: ["pipe", "pipe", "pipe"],
       });
+
+      const timer = setTimeout(() => {
+        child.kill();
+        reject(new Error(`Command timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
 
       let stdout = "";
       let stderr = "";
@@ -44,7 +65,13 @@ export class OpenClawClient {
         stderr += chunk;
       });
 
+      child.on("error", (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+
       child.on("close", (code) => {
+        clearTimeout(timer);
         if (code !== 0) {
           try {
             const errResponse = JSON.parse(stdout);
@@ -73,5 +100,5 @@ export class OpenClawClient {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const client = new OpenClawClient();
   console.log("Fetching agents...");
-  client.execute("agents.list").then(console.log).catch(console.error);
+  client.execute("agents.list", {}, { isAdmin: true }).then(console.log).catch(console.error);
 }

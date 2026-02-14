@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { listAgentIds } from "../../agents/agent-scope.js";
 import { CommandBridgeRegistry } from "../registry.js";
 import { BridgeContext } from "../types.js";
 import { wireAgentsBridgeCommands } from "./agents.js";
@@ -39,6 +40,9 @@ describe("Agents Bridge Commands", () => {
   beforeEach(() => {
     registry = new CommandBridgeRegistry();
     wireAgentsBridgeCommands(registry);
+    vi.clearAllMocks();
+    // Reset default mock implementation
+    vi.mocked(listAgentIds).mockReturnValue(["main", "test"]);
   });
 
   const adminContext: BridgeContext = {
@@ -53,21 +57,29 @@ describe("Agents Bridge Commands", () => {
 
   describe("agents.list", () => {
     it("should list agents for admin", async () => {
-      const cmd = registry.get("agents.list");
+      const cmd = registry.get("agents.list")!;
       expect(cmd).toBeDefined();
 
-      // @ts-ignore
-      const result = await cmd!.handler({}, adminContext);
+      const result = await cmd.handler({}, adminContext);
       expect(result.success).toBe(true);
       const data = result.data as { agents: any[] };
       expect(data.agents).toHaveLength(2);
       expect(data.agents[0].id).toBe("main");
     });
 
+    it("should handle empty agent list", async () => {
+      vi.mocked(listAgentIds).mockReturnValue([]);
+      const cmd = registry.get("agents.list")!;
+
+      const result = await cmd.handler({}, adminContext);
+      expect(result.success).toBe(true);
+      const data = result.data as { agents: any[] };
+      expect(data.agents).toHaveLength(0);
+    });
+
     it("should filter agents", async () => {
-      const cmd = registry.get("agents.list");
-      // @ts-ignore
-      const result = await cmd!.handler({ filter: "main" }, adminContext);
+      const cmd = registry.get("agents.list")!;
+      const result = await cmd.handler({ filter: "main" }, adminContext);
       expect(result.success).toBe(true);
       const data = result.data as { agents: any[] };
       expect(data.agents).toHaveLength(1);
@@ -75,18 +87,16 @@ describe("Agents Bridge Commands", () => {
     });
 
     it("should handle empty filter gracefully", async () => {
-      const cmd = registry.get("agents.list");
-      // @ts-ignore
-      const result = await cmd!.handler({ filter: "" }, adminContext);
+      const cmd = registry.get("agents.list")!;
+      const result = await cmd.handler({ filter: "" }, adminContext);
       expect(result.success).toBe(true);
       const data = result.data as { agents: any[] };
       expect(data.agents).toHaveLength(2);
     });
 
     it("should deny access for non-admin", async () => {
-      const cmd = registry.get("agents.list");
-      // @ts-ignore
-      const result = await cmd!.handler({}, userContext);
+      const cmd = registry.get("agents.list")!;
+      const result = await cmd.handler({}, userContext);
       expect(result.success).toBe(false);
       expect(result.error).toContain("Unauthorized");
     });
@@ -94,26 +104,23 @@ describe("Agents Bridge Commands", () => {
 
   describe("agents.status", () => {
     it("should return status for existing agent", async () => {
-      const cmd = registry.get("agents.status");
-      // @ts-ignore
-      const result = await cmd!.handler({ agentId: "main" }, adminContext);
+      const cmd = registry.get("agents.status")!;
+      const result = await cmd.handler({ agentId: "main" }, adminContext);
       expect(result.success).toBe(true);
       const data = result.data as any;
       expect(data.sessionKey).toBe("agent:main:session");
     });
 
     it("should return error for unknown agent", async () => {
-      const cmd = registry.get("agents.status");
-      // @ts-ignore
-      const result = await cmd!.handler({ agentId: "unknown" }, adminContext);
+      const cmd = registry.get("agents.status")!;
+      const result = await cmd.handler({ agentId: "unknown" }, adminContext);
       expect(result.success).toBe(false);
       expect(result.error).toContain("not found");
     });
 
     it("should deny access for non-admin", async () => {
-      const cmd = registry.get("agents.status");
-      // @ts-ignore
-      const result = await cmd!.handler({ agentId: "main" }, userContext);
+      const cmd = registry.get("agents.status")!;
+      const result = await cmd.handler({ agentId: "main" }, userContext);
       expect(result.success).toBe(false);
       expect(result.error).toContain("Unauthorized");
     });

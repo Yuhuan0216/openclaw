@@ -65,8 +65,10 @@
 - Format check: `pnpm format` (oxfmt --check)
 - Format fix: `pnpm format:fix` (oxfmt --write)
 - Tests: `pnpm test` (vitest); coverage: `pnpm test:coverage`
+- Fast unit tests (skips gateway): `pnpm test:fast`
 - Single test file: `vitest run src/path/to/file.test.ts`
 - Single test watch: `vitest src/path/to/file.test.ts --watch`
+- Gateway dev (skip channels): `pnpm gateway:dev`
 - Test configs: unit (`vitest.unit.config.ts`), e2e (`vitest.e2e.config.ts`), extensions (`vitest.extensions.config.ts`), gateway (`vitest.gateway.config.ts`), live (`vitest.live.config.ts`)
 
 ## Architecture Overview
@@ -88,7 +90,8 @@ Key entry points: `src/index.ts` (main export), `src/entry.ts` (CLI entry), `src
 
 ## Coding Style & Naming Conventions
 
-- Language: TypeScript (ESM). Prefer strict typing; avoid `any`.
+- Language: TypeScript (ESM, strict mode). Prefer strict typing; avoid `any`.
+- Path aliases: `openclaw/plugin-sdk` → `src/plugin-sdk/index.ts`, `openclaw/plugin-sdk/account-id` → `src/plugin-sdk/account-id.ts`, `openclaw/*` → `./*` (root-relative). Defined in `tsconfig.json` paths + vitest `resolve.alias`.
 - Formatting/linting via Oxlint and Oxfmt; run `pnpm check` before commits.
 - Add brief code comments for tricky or non-obvious logic.
 - Keep files concise; extract helpers instead of “V2” copies. Use existing patterns for CLI options and dependency injection via `createDefaultDeps`.
@@ -103,7 +106,7 @@ Key entry points: `src/index.ts` (main export), `src/entry.ts` (CLI entry), `src
 
 ## Testing Guidelines
 
-- Framework: Vitest with V8 coverage thresholds (70% lines/branches/functions/statements).
+- Framework: Vitest with V8 coverage thresholds (70% lines/functions/statements, 55% branches).
 - Naming: match source names with `*.test.ts`; e2e in `*.e2e.test.ts`.
 - Run `pnpm test` (or `pnpm test:coverage`) before pushing when you touch logic.
 - Do not set test workers above 16; tried already.

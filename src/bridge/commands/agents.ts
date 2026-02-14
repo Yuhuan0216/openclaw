@@ -42,9 +42,9 @@ export function wireAgentsBridgeCommands(registry: BridgeRegistry) {
         };
       });
 
-      // Filter if requested
+      // Filter if requested (substring match on id or name)
       const filtered = args.filter
-        ? agents.filter((a) => a.id.includes(args.filter!) || a.name.includes(args.filter!))
+        ? agents.filter((a) => a.id.startsWith(args.filter!) || a.name.startsWith(args.filter!))
         : agents;
 
       return {

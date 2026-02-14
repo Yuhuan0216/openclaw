@@ -1,17 +1,11 @@
 import { spawn } from "child_process";
+import type { BridgeContext } from "../bridge/types.js";
 
 interface BridgeResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
   view?: string;
-}
-
-interface BridgeContext {
-  channel: string;
-  userId?: string;
-  isAdmin: boolean;
-  metadata?: Record<string, unknown>;
 }
 
 export class OpenClawClient {

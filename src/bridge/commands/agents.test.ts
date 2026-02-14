@@ -38,11 +38,11 @@ describe("Agents Bridge Commands", () => {
   let registry: CommandBridgeRegistry;
 
   beforeEach(() => {
-    registry = new CommandBridgeRegistry();
-    wireAgentsBridgeCommands(registry);
     vi.clearAllMocks();
     // Reset default mock implementation
     vi.mocked(listAgentIds).mockReturnValue(["main", "test"]);
+    registry = new CommandBridgeRegistry();
+    wireAgentsBridgeCommands(registry);
   });
 
   const adminContext: BridgeContext = {

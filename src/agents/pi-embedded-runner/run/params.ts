@@ -105,4 +105,5 @@ export type RunEmbeddedPiAgentParams = {
   ownerNumbers?: string[];
   enforceFinalTag?: boolean;
   historyLimit?: number;
+  limitHistoryTurns?: number;
 };

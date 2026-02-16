@@ -771,7 +771,7 @@ export async function runEmbeddedAttempt(
         isCompacting: () => subscription.isCompacting(),
         abort: abortRun,
       };
-      setActiveEmbeddedRun(params.sessionId, queueHandle);
+      setActiveEmbeddedRun(params.sessionId, queueHandle, params.sessionKey);
 
       let abortWarnTimer: NodeJS.Timeout | undefined;
       const isProbeSession = params.sessionId?.startsWith("probe-") ?? false;
@@ -1114,7 +1114,7 @@ export async function runEmbeddedAttempt(
             `CRITICAL: unsubscribe failed, possible resource leak: runId=${params.runId} ${String(err)}`,
           );
         }
-        clearActiveEmbeddedRun(params.sessionId, queueHandle);
+        clearActiveEmbeddedRun(params.sessionId, queueHandle, params.sessionKey);
         params.abortSignal?.removeEventListener?.("abort", onAbort);
       }
 

@@ -1,5 +1,4 @@
 import {
-  formatSkillsForPrompt,
   loadSkillsFromDir,
   type Skill,
 } from "@mariozechner/pi-coding-agent";
@@ -19,6 +18,7 @@ import { CONFIG_DIR, resolveUserPath } from "../../utils.js";
 import { resolveSandboxPath } from "../sandbox-paths.js";
 import { resolveBundledSkillsDir } from "./bundled-dir.js";
 import { shouldIncludeSkill } from "./config.js";
+import { normalizeSkillFilter } from "./filter.js";
 import {
   parseFrontmatter,
   resolveOpenClawMetadata,
@@ -52,14 +52,16 @@ function filterSkillEntries(
   let filtered = entries.filter((entry) => shouldIncludeSkill({ entry, config, eligibility }));
   // If skillFilter is provided, only include skills in the filter list.
   if (skillFilter !== undefined) {
-    const normalized = skillFilter.map((entry) => String(entry).trim()).filter(Boolean);
+    const normalized = normalizeSkillFilter(skillFilter) ?? [];
     const label = normalized.length > 0 ? normalized.join(", ") : "(none)";
-    console.log(`[skills] Applying skill filter: ${label}`);
+    skillsLogger.debug(`Applying skill filter: ${label}`);
     filtered =
       normalized.length > 0
         ? filtered.filter((entry) => normalized.includes(entry.skill.name))
         : [];
-    console.log(`[skills] After filter: ${filtered.map((entry) => entry.skill.name).join(", ")}`);
+    skillsLogger.debug(
+      `After skill filter: ${filtered.map((entry) => entry.skill.name).join(", ") || "(none)"}`,
+    );
   }
   return filtered;
 }
@@ -279,12 +281,14 @@ export function buildWorkspaceSkillSnapshot(
 
   const remoteNote = opts?.eligibility?.remote?.note?.trim();
   const prompt = [remoteNote, indexContent].filter(Boolean).join("\n");
+  const skillFilter = normalizeSkillFilter(opts?.skillFilter);
   return {
     prompt,
     skills: eligible.map((entry) => ({
       name: entry.skill.name,
       primaryEnv: entry.metadata?.primaryEnv,
     })),
+    ...(skillFilter === undefined ? {} : { skillFilter }),
     resolvedSkills,
     version: opts?.snapshotVersion,
   };
@@ -302,28 +306,7 @@ export function buildWorkspaceSkillsPrompt(
     eligibility?: SkillEligibilityContext;
   },
 ): string {
-  const skillEntries = opts?.entries ?? loadSkillEntries(workspaceDir, opts);
-  const eligible = filterSkillEntries(
-    skillEntries,
-    opts?.config,
-    opts?.skillFilter,
-    opts?.eligibility,
-  );
-
-  // Dynamic Loading Phase 3: Only inject skills marked 'always: true' or 'skills-search'
-  const promptEntries = filterPromptEligibleSkills(eligible);
-  const resolvedSkills = promptEntries.map((entry) => entry.skill);
-
-  // Append discovery hint if we filtered out skills
-  let indexContent = formatSkillsIndex(resolvedSkills, workspaceDir);
-  if (eligible.length > promptEntries.length) {
-    indexContent +=
-      "\n\n(Note: Many skills are not listed here to save context. Use 'skills-search' to find capabilities.)";
-  }
-
-  const remoteNote = opts?.eligibility?.remote?.note?.trim();
-
-  return [remoteNote, indexContent].filter(Boolean).join("\n");
+  return buildWorkspaceSkillSnapshot(workspaceDir, opts).prompt;
 }
 
 export function resolveSkillsPromptForRun(params: {

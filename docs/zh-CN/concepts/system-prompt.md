@@ -82,16 +82,15 @@ OpenClaw 可以为子智能体渲染更小的系统提示词。运行时为每�
 
 ## Skills
 
-当存在符合条件的 Skills 时，OpenClaw 注入一个紧凑的**可用 Skills 列表**（`formatSkillsForPrompt`），其中包含每个 Skill 的**文件路径**。提示词指示模型使用 `read` 加载列出位置（工作区、托管或内置）的 SKILL.md。如果没有符合条件的 Skills，则省略 Skills 部分。
+当存在符合条件的 Skills 时，OpenClaw 注入一个紧凑的**Skills 索引**（`formatSkillsIndex`），其中包含截断的描述和每个 Skill 的**文件路径**。提示词指示模型使用 `read` 加载列出位置（工作区、托管或内置）的 SKILL.md。如果没有符合条件的 Skills，则省略 Skills 部分。
 
 ```
-<available_skills>
-  <skill>
-    <name>...</name>
-    <description>...</description>
-    <location>...</location>
-  </skill>
-</available_skills>
+# SKILLS INDEX
+Descriptions are truncated. Use 'read' to load detailed instructions from the provided <path>.
+
+## skill-name
+Description: A short description of the skill...
+Path: skills/skill-name/SKILL.md
 ```
 
 这使基础提示词保持小巧，同时仍然支持有针对性的 Skill 使用。

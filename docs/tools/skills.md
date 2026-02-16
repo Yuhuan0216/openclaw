@@ -266,10 +266,10 @@ By default, OpenClaw watches skill folders and bumps the skills snapshot when `S
 
 ## Token impact (skills list)
 
-When skills are eligible, OpenClaw injects a compact XML list of available skills into the system prompt (via `formatSkillsForPrompt` in `pi-coding-agent`). The cost is deterministic:
+When skills are eligible, OpenClaw injects a compact Markdown skills index into the system prompt (via `formatSkillsIndex`). Descriptions are truncated to 120 characters to save tokens. The cost is deterministic:
 
-- **Base overhead (only when ≥1 skill):** 195 characters.
-- **Per skill:** 97 characters + the length of the XML-escaped `<name>`, `<description>`, and `<location>` values.
+- **Base overhead (only when ≥1 skill):** ~105 characters (header lines).
+- **Per skill:** skill name + truncated description (≤120 chars) + file path.
 
 Formula (characters):
 

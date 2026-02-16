@@ -239,9 +239,9 @@ export function filterPromptEligibleSkills(entries: SkillEntry[]): SkillEntry[] 
     if (entry.invocation?.disableModelInvocation === true) return false;
 
     const isSearch = entry.skill.name === "skills-search";
-    // Check for string "true" (frontmatter values are always strings)
-    const alwaysRaw = entry.frontmatter?.always;
-    const isAlways = alwaysRaw === "true";
+    // Check for both boolean true and string "true" (frontmatter values may be either)
+    const alwaysRaw: unknown = entry.frontmatter?.always;
+    const isAlways = alwaysRaw === true || alwaysRaw === "true";
 
     return isSearch || isAlways;
   });

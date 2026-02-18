@@ -98,6 +98,16 @@ import type {
   LogsTailResultSchema,
 } from "./logs-chat.js";
 import type {
+  MeshAutoStepSchema,
+  MeshPlanAutoParamsSchema,
+  MeshPlanParamsSchema,
+  MeshRetryParamsSchema,
+  MeshRunParamsSchema,
+  MeshStatusParamsSchema,
+  MeshWorkflowPlanSchema,
+  MeshWorkflowStepSchema,
+} from "./mesh.js";
+import type {
   NodeDescribeParamsSchema,
   NodeEventParamsSchema,
   NodeInvokeParamsSchema,
@@ -242,3 +252,11 @@ export type ChatEvent = Static<typeof ChatEventSchema>;
 export type UpdateRunParams = Static<typeof UpdateRunParamsSchema>;
 export type TickEvent = Static<typeof TickEventSchema>;
 export type ShutdownEvent = Static<typeof ShutdownEventSchema>;
+export type MeshWorkflowStep = Static<typeof MeshWorkflowStepSchema>;
+export type MeshWorkflowPlan = Static<typeof MeshWorkflowPlanSchema>;
+export type MeshAutoStep = Static<typeof MeshAutoStepSchema>;
+export type MeshPlanParams = Static<typeof MeshPlanParamsSchema>;
+export type MeshPlanAutoParams = Static<typeof MeshPlanAutoParamsSchema>;
+export type MeshRunParams = Static<typeof MeshRunParamsSchema>;
+export type MeshStatusParams = Static<typeof MeshStatusParamsSchema>;
+export type MeshRetryParams = Static<typeof MeshRetryParamsSchema>;

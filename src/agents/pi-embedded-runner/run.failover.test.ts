@@ -81,6 +81,7 @@ vi.mock("../pi-embedded-helpers.js", () => ({
 }));
 vi.mock("../usage.js", () => ({
   normalizeUsage: () => ({}),
+  derivePromptTokens: () => 0,
 }));
 vi.mock("./run/payloads.js", () => ({
   buildEmbeddedRunPayloads: () => [{ text: "mock payload" }],

@@ -2,6 +2,7 @@ import type { OpenClawConfig } from "../config/config.js";
 import type { FailoverReason } from "./pi-embedded-helpers.js";
 import {
   ensureAuthProfileStore,
+  getSoonestCooldownExpiry,
   isProfileInCooldown,
   markAuthProfileCooldown,
   resolveAuthProfileOrder,
@@ -135,14 +136,34 @@ async function raceCandidates<T>(
       profileIds = allProfileIds.filter((id) => !isProfileInCooldown(authStore, id));
 
       if (allProfileIds.length > 0 && profileIds.length === 0) {
-        // All profiles for this provider are in cooldown; skip without attempting
-        attempts.push({
-          provider: candidate.provider,
-          model: candidate.model,
-          error: `Provider ${candidate.provider} is in cooldown (all profiles unavailable)`,
-          reason: "rate_limit",
+        // All profiles for this provider are in cooldown.
+        // For the primary model, probe it if the soonest cooldown expiry is close
+        // or already past — to detect recovery and avoid staying on a fallback
+        // model long after the rate-limit window clears.
+        const now = Date.now();
+        const probeThrottleKey = resolveProbeThrottleKey(candidate.provider, params.agentDir);
+        const shouldProbe = shouldProbePrimaryDuringCooldown({
+          isPrimary: i === 0,
+          hasFallbackCandidates: sortedCandidates.length > 1,
+          now,
+          throttleKey: probeThrottleKey,
+          authStore,
+          profileIds: allProfileIds,
         });
-        continue;
+
+        if (!shouldProbe) {
+          attempts.push({
+            provider: candidate.provider,
+            model: candidate.model,
+            error: `Provider ${candidate.provider} is in cooldown (all profiles unavailable)`,
+            reason: "rate_limit",
+          });
+          continue;
+        }
+
+        // Probe: attempt despite cooldown; if it fails, fall through to next candidate.
+        lastProbeAttempt.set(probeThrottleKey, now);
+        profileIds = allProfileIds;
       }
     }
 
@@ -354,6 +375,50 @@ function resolveFallbackCandidates(params: {
 
   return candidates;
 }
+
+const lastProbeAttempt = new Map<string, number>();
+const MIN_PROBE_INTERVAL_MS = 30_000; // 30 seconds between probes per key
+const PROBE_MARGIN_MS = 2 * 60 * 1000;
+const PROBE_SCOPE_DELIMITER = "::";
+
+function resolveProbeThrottleKey(provider: string, agentDir?: string): string {
+  const scope = String(agentDir ?? "").trim();
+  return scope ? `${scope}${PROBE_SCOPE_DELIMITER}${provider}` : provider;
+}
+
+function shouldProbePrimaryDuringCooldown(params: {
+  isPrimary: boolean;
+  hasFallbackCandidates: boolean;
+  now: number;
+  throttleKey: string;
+  authStore: ReturnType<typeof ensureAuthProfileStore>;
+  profileIds: string[];
+}): boolean {
+  if (!params.isPrimary || !params.hasFallbackCandidates) {
+    return false;
+  }
+
+  const lastProbe = lastProbeAttempt.get(params.throttleKey) ?? 0;
+  if (params.now - lastProbe < MIN_PROBE_INTERVAL_MS) {
+    return false;
+  }
+
+  const soonest = getSoonestCooldownExpiry(params.authStore, params.profileIds);
+  if (soonest === null || !Number.isFinite(soonest)) {
+    return true;
+  }
+
+  // Probe when cooldown already expired or within the configured margin.
+  return params.now >= soonest - PROBE_MARGIN_MS;
+}
+
+/** @internal – exposed for unit tests only */
+export const _probeThrottleInternals = {
+  lastProbeAttempt,
+  MIN_PROBE_INTERVAL_MS,
+  PROBE_MARGIN_MS,
+  resolveProbeThrottleKey,
+} as const;
 
 export async function runWithModelFallback<T>(params: {
   cfg: OpenClawConfig | undefined;

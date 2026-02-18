@@ -57,6 +57,7 @@ Implementation:
 
 - `sanitizeSessionMessagesImages` in `src/agents/pi-embedded-helpers/images.ts`
 - `sanitizeContentBlocksImages` in `src/agents/tool-images.ts`
+- Max image side is configurable via `agents.defaults.imageMaxDimensionPx` (default: `1200`).
 
 ---
 
@@ -95,7 +96,7 @@ external end-user instructions.
 **OpenAI / OpenAI Codex**
 
 - Image sanitization only.
-- On model switch into OpenAI Responses/Codex, drop orphaned reasoning signatures (standalone reasoning items without a following content block).
+- Drop orphaned reasoning signatures (standalone reasoning items without a following content block) for OpenAI Responses/Codex transcripts.
 - No tool call id sanitization.
 - No tool result pairing repair.
 - No turn validation or reordering.

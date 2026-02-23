@@ -120,10 +120,10 @@ export type CliBackendConfig = {
 export type AgentDefaultsConfig = {
   /** Automatically append user instructions starting with "Remember:" to MEMORY.md. */
   autoMemory?: boolean;
-  /** Primary model and fallbacks (provider/model). */
-  model?: AgentModelListConfig;
-  /** Optional image-capable model and fallbacks (provider/model). */
-  imageModel?: AgentModelListConfig;
+  /** Primary model and fallbacks (provider/model). Accepts string or {primary,fallbacks}. */
+  model?: AgentModelConfig;
+  /** Optional image-capable model and fallbacks (provider/model). Accepts string or {primary,fallbacks}. */
+  imageModel?: AgentModelConfig;
   /** Model catalog with optional aliases (full provider/model keys). */
   models?: Record<string, AgentModelEntryConfig>;
   /** Agent working directory (preferred). Used as the default cwd for agent runs. */

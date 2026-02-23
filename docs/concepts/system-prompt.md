@@ -8,7 +8,7 @@ title: "System Prompt"
 
 # System Prompt
 
-OpenClaw builds a custom system prompt for every agent run. The prompt is **OpenClaw-owned** and does not use the p-coding-agent default prompt.
+OpenClaw builds a custom system prompt for every agent run. The prompt is **OpenClaw-owned** and does not use the pi-coding-agent default prompt.
 
 The prompt is assembled by OpenClaw and injected into each agent run.
 
@@ -71,8 +71,9 @@ compaction.
 > do not count against the context window unless the model explicitly reads them.
 
 Large files are truncated with a marker. The max per-file size is controlled by
-`agents.defaults.bootstrapMaxChars` (default: 20000). Missing files inject a
-short missing-file marker.
+`agents.defaults.bootstrapMaxChars` (default: 20000). Total injected bootstrap
+content across files is capped by `agents.defaults.bootstrapTotalMaxChars`
+(default: 150000). Missing files inject a short missing-file marker.
 
 Sub-agent sessions only inject `AGENTS.md` and `TOOLS.md` (other bootstrap files
 are filtered out to keep the sub-agent context small).
@@ -100,20 +101,19 @@ See [Date & Time](/date-time) for full behavior details.
 
 ## Skills
 
-When eligible skills exist, OpenClaw injects a compact **available skills list**
-(`formatSkillsForPrompt`) that includes the **file path** for each skill. The
-prompt instructs the model to use `read` to load the SKILL.md at the listed
-location (workspace, managed, or bundled). If no skills are eligible, the
-Skills section is omitted.
+When eligible skills exist, OpenClaw injects a compact **skills index**
+(`formatSkillsIndex`) that includes a truncated description and **file path**
+for each skill. The prompt instructs the model to use `read` to load the
+SKILL.md at the listed location (workspace, managed, or bundled). If no skills
+are eligible, the Skills section is omitted.
 
 ```
-<available_skills>
-  <skill>
-    <name>...</name>
-    <description>...</description>
-    <location>...</location>
-  </skill>
-</available_skills>
+# SKILLS INDEX
+Descriptions are truncated. Use 'read' to load detailed instructions from the provided <path>.
+
+## skill-name
+Description: A short description of the skill...
+Path: skills/skill-name/SKILL.md
 ```
 
 This keeps the base prompt small while still enabling targeted skill usage.

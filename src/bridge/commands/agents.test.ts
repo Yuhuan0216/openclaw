@@ -1,14 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { listAgentIds } from "../../agents/agent-scope.js";
 import { CommandBridgeRegistry } from "../registry.js";
+import { BridgeContext } from "../types.js";
 import { wireAgentsBridgeCommands } from "./agents.js";
 
 // Mock dependencies
 vi.mock("../../config/config.js", () => ({
   loadConfig: vi.fn(() => ({
     agents: {
-      main: { model: "default", provider: "openai" },
-      test: { model: "claude-3", provider: "anthropic" },
+      main: { capabilities: ["test"], description: "Main Agent" },
+      test: { capabilities: [], description: "Test Agent" },
     },
   })),
 }));
@@ -18,25 +19,15 @@ vi.mock("../../agents/agent-scope.js", () => ({
 }));
 
 vi.mock("../../config/sessions.js", () => ({
-  resolveAgentMainSessionKey: vi.fn(({ agentId }) => `agent:${agentId}:main`),
-  canonicalizeMainSessionAlias: vi.fn(({ agentId }) => `agent:${agentId}:main`),
-  resolveSessionStoreKey: vi.fn(({ sessionKey }) => sessionKey),
-  resolveSessionStoreAgentId: vi.fn(() => "main"),
-  resolveStorePath: vi.fn(() => "/tmp/sessions.json"),
-  loadSessionStore: vi.fn(() => ({
-    "agent:main:main": { label: "Main Agent", updatedAt: Date.now() },
-    "agent:test:main": {
-      label: "Test Agent",
-      modelOverride: "claude-3-opus",
-      providerOverride: "anthropic",
-      updatedAt: Date.now(),
-    },
-  })),
+  resolveAgentMainSessionKey: vi.fn(({ agentId }) => `agent:${agentId}:session`),
+}));
+
+vi.mock("../../gateway/session-utils.js", () => ({
   loadSessionEntry: vi.fn((key) => ({
     entry: {
-      label: key.includes("agent:main") ? "Main Agent" : "Test Agent",
-      modelOverride: key.includes("agent:main") ? undefined : "claude-3-opus",
-      providerOverride: key.includes("agent:main") ? undefined : "anthropic",
+      label: key.includes("main") ? "Main Agent" : "Test Agent",
+      modelOverride: "gpt-4",
+      providerOverride: "openai",
       updatedAt: Date.now(),
     },
     storePath: "/tmp/sessions.json",
@@ -44,65 +35,94 @@ vi.mock("../../config/sessions.js", () => ({
 }));
 
 describe("Agents Bridge Commands", () => {
-  const registry = new CommandBridgeRegistry();
-  wireAgentsBridgeCommands(registry);
+  let registry: CommandBridgeRegistry;
 
-  it("should list agents", async () => {
-    const cmd = registry.get("agents.list");
-    expect(cmd).toBeDefined();
-
-    const result = await cmd!.handler({}, { channel: "test", isAdmin: true });
-    expect(result.success).toBe(true);
-    const data = result.data as { agents: { id: string; name: string }[] };
-    expect(data.agents).toHaveLength(2);
-    expect(data.agents[0]).toMatchObject({ id: "main", name: "Main Agent" });
-    expect(data.agents[1]).toMatchObject({ id: "test", name: "Test Agent" });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset default mock implementation
+    vi.mocked(listAgentIds).mockReturnValue(["main", "test"]);
+    registry = new CommandBridgeRegistry();
+    wireAgentsBridgeCommands(registry);
   });
 
-  it("should filter agents", async () => {
-    const cmd = registry.get("agents.list");
-    const result = await cmd!.handler({ filter: "main" }, { channel: "test", isAdmin: true });
-    expect(result.success).toBe(true);
-    const data = result.data as { agents: { id: string }[] };
-    expect(data.agents).toHaveLength(1);
-    expect(data.agents[0].id).toBe("main");
+  const adminContext: BridgeContext = {
+    channel: "test",
+    isAdmin: true,
+  };
+
+  const userContext: BridgeContext = {
+    channel: "test",
+    isAdmin: false,
+  };
+
+  describe("agents.list", () => {
+    it("should list agents for admin", async () => {
+      const cmd = registry.get("agents.list")!;
+      expect(cmd).toBeDefined();
+
+      const result = await cmd.handler({}, adminContext);
+      expect(result.success).toBe(true);
+      const data = result.data as { agents: Array<{ id: string }> };
+      expect(data.agents).toHaveLength(2);
+      expect(data.agents[0].id).toBe("main");
+    });
+
+    it("should handle empty agent list", async () => {
+      vi.mocked(listAgentIds).mockReturnValue([]);
+      const cmd = registry.get("agents.list")!;
+
+      const result = await cmd.handler({}, adminContext);
+      expect(result.success).toBe(true);
+      const data = result.data as { agents: Array<{ id: string }> };
+      expect(data.agents).toHaveLength(0);
+    });
+
+    it("should filter agents", async () => {
+      const cmd = registry.get("agents.list")!;
+      const result = await cmd.handler({ filter: "main" }, adminContext);
+      expect(result.success).toBe(true);
+      const data = result.data as { agents: Array<{ id: string }> };
+      expect(data.agents).toHaveLength(1);
+      expect(data.agents[0].id).toBe("main");
+    });
+
+    it("should handle empty filter gracefully", async () => {
+      const cmd = registry.get("agents.list")!;
+      const result = await cmd.handler({ filter: "" }, adminContext);
+      expect(result.success).toBe(true);
+      const data = result.data as { agents: Array<{ id: string }> };
+      expect(data.agents).toHaveLength(2);
+    });
+
+    it("should deny access for non-admin", async () => {
+      const cmd = registry.get("agents.list")!;
+      const result = await cmd.handler({}, userContext);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Unauthorized");
+    });
   });
 
-  it("should get agent status", async () => {
-    const cmd = registry.get("agents.status");
-    expect(cmd).toBeDefined();
+  describe("agents.status", () => {
+    it("should return status for existing agent", async () => {
+      const cmd = registry.get("agents.status")!;
+      const result = await cmd.handler({ agentId: "main" }, adminContext);
+      expect(result.success).toBe(true);
+      const data = result.data as Record<string, unknown>;
+      expect(data.sessionKey).toBe("agent:main:session");
+    });
 
-    const result = await cmd!.handler({ agentId: "test" }, { channel: "test", isAdmin: true });
-    expect(result.success).toBe(true);
-    const data = result.data as { sessionKey: string; model: string };
-    expect(data.sessionKey).toBe("agent:test:main");
-    expect(data.model).toBe("claude-3-opus");
-  });
+    it("should return error for unknown agent", async () => {
+      const cmd = registry.get("agents.status")!;
+      const result = await cmd.handler({ agentId: "unknown" }, adminContext);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("not found");
+    });
 
-  it("should deny non-admin access", async () => {
-    const listCmd = registry.get("agents.list");
-    const listResult = await listCmd!.handler({}, { channel: "test", isAdmin: false });
-    expect(listResult.success).toBe(false);
-    expect(listResult.error).toContain("Unauthorized");
-
-    const statusCmd = registry.get("agents.status");
-    const statusResult = await statusCmd!.handler(
-      { agentId: "main" },
-      { channel: "test", isAdmin: false },
-    );
-    expect(statusResult.success).toBe(false);
-    expect(statusResult.error).toContain("Unauthorized");
-  });
-
-  it("should handle empty agents list", async () => {
-    // Override mock for this test
-    vi.mocked(listAgentIds).mockReturnValueOnce([]);
-
-    const cmd = registry.get("agents.list");
-    const result = await cmd!.handler({}, { channel: "test", isAdmin: true });
-
-    expect(result.success).toBe(true);
-    const data = result.data as { agents: unknown[] };
-    expect(data.agents).toHaveLength(0);
+    it("should deny access for non-admin", async () => {
+      const cmd = registry.get("agents.status")!;
+      const result = await cmd.handler({ agentId: "main" }, userContext);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Unauthorized");
+    });
   });
 });

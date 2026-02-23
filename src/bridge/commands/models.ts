@@ -1,10 +1,32 @@
-import type { BridgeRegistry, BridgeResult } from "../types.js";
-import { modelsAuthListLogic } from "../../commands/models/auth-list.logic.js";
+import { z } from "zod";
+import {
+  modelsAuthListLogic,
+  type ModelsAuthListOptions,
+} from "../../commands/models/auth-list.logic.js";
 import {
   performAuthSwitch,
   getAuthSwitchContext,
 } from "../../commands/models/auth-switch.logic.js";
-import { modelsListLogic } from "../../commands/models/list.logic.js";
+import { modelsListLogic, type ModelsListOptions } from "../../commands/models/list.logic.js";
+import type { BridgeRegistry, BridgeResult } from "../types.js";
+
+// Schemas
+const ModelsListSchema = z.object({
+  all: z.boolean().optional(),
+  local: z.boolean().optional(),
+  provider: z.string().optional(),
+});
+
+const ModelsAuthListSchema = z.object({
+  provider: z.string().optional(),
+  agent: z.string().optional(),
+});
+
+const ModelsSwitchSchema = z.object({
+  provider: z.string(),
+  profile: z.string(),
+  agent: z.string().optional(),
+});
 
 // Adapter helper
 function success<T>(data: T, view?: BridgeResult["view"]): BridgeResult<T> {
@@ -20,10 +42,10 @@ export function wireModelsBridgeCommands(registry: BridgeRegistry) {
   registry.register({
     name: "models.list",
     description: "List available models and their status",
-    handler: async (args: unknown) => {
+    schema: ModelsListSchema,
+    handler: async (args: ModelsListOptions) => {
       try {
-        const params = (args as any) || {};
-        const { rows, error } = await modelsListLogic(params);
+        const { rows, error } = await modelsListLogic(args);
         // Partial success is still success in list logic, but we can signal warnings if needed
         return {
           success: true,
@@ -41,10 +63,10 @@ export function wireModelsBridgeCommands(registry: BridgeRegistry) {
   registry.register({
     name: "models.auth.list",
     description: "List authentication profiles",
-    handler: async (args: unknown) => {
+    schema: ModelsAuthListSchema,
+    handler: async (args: ModelsAuthListOptions) => {
       try {
-        const params = (args as any) || {};
-        const result = await modelsAuthListLogic(params);
+        const result = await modelsAuthListLogic(args);
         return success(result, "table");
       } catch (err) {
         return failure(String(err));
@@ -56,15 +78,12 @@ export function wireModelsBridgeCommands(registry: BridgeRegistry) {
   registry.register({
     name: "models.switch",
     description: "Switch active model profile",
-    handler: async (args: unknown) => {
+    schema: ModelsSwitchSchema,
+    handler: async (args: z.infer<typeof ModelsSwitchSchema>) => {
       try {
-        const params = (args as any) || {};
-        if (!params.provider || !params.profile) {
-          return failure("Missing required args: provider, profile");
-        }
-        const ctx = getAuthSwitchContext({ provider: params.provider, agent: params.agent });
-        await performAuthSwitch(ctx, params.profile);
-        return success({ message: `Switched ${params.provider} to ${params.profile}` }, "text");
+        const ctx = getAuthSwitchContext({ provider: args.provider, agent: args.agent });
+        await performAuthSwitch(ctx, args.profile);
+        return success({ message: `Switched ${args.provider} to ${args.profile}` }, "text");
       } catch (err) {
         return failure(String(err));
       }

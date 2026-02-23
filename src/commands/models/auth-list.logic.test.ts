@@ -17,14 +17,20 @@ vi.mock("../../agents/auth-profiles.js", () => ({
     },
   }),
   resolveAuthStorePathForDisplay: () => "/mock/agent/dir/auth-profiles.json",
-  resolveAuthProfileDisplayLabel: () => "Default",
-  resolveAuthProfileOrder: ({ provider }: { provider: string }) => [`${provider}/default`],
-  resolveProfileUnusableUntilForDisplay: () => null,
-  resolveProfileDisplayInfos: ({ provider }: { provider: string }) => [
-    { id: `${provider}/default`, name: "Default", isDefault: true, isActive: true },
-  ],
   listProfilesForProvider: ({ provider }: { provider: string }) => [
     { id: `${provider}/default`, provider, email: "mock@example.com" },
+  ],
+}));
+vi.mock("./list.auth-overview.js", () => ({
+  resolveProfileDisplayInfos: ({ provider }: { provider: string }) => [
+    {
+      profileId: `${provider}/default`,
+      provider,
+      type: "api_key",
+      status: "ok",
+      active: true,
+      detail: "",
+    },
   ],
 }));
 vi.mock("../../config/config.js", () => ({

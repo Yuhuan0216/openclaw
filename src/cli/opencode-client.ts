@@ -1,4 +1,5 @@
 import { spawn } from "child_process";
+import type { BridgeContext } from "../bridge/types.js";
 
 interface BridgeResponse<T = unknown> {
   success: boolean;
@@ -7,20 +8,14 @@ interface BridgeResponse<T = unknown> {
   view?: string;
 }
 
-interface BridgeContext {
-  channel?: string;
-  isAdmin?: boolean;
-  userId?: string;
-  metadata?: Record<string, unknown>;
-}
-
 export class OpenClawClient {
   constructor(private binPath: string = process.env.OPENCLAW_BIN || "openclaw") {}
 
   async execute<T>(
     action: string,
     args: Record<string, unknown> = {},
-    options: { context?: BridgeContext; timeout?: number } = {},
+    context: Partial<BridgeContext> = {},
+    timeoutMs: number = 5000,
   ): Promise<BridgeResponse<T>> {
     const isTsFile = this.binPath.endsWith(".ts");
     const isJsFile = this.binPath.endsWith(".js");
@@ -31,17 +26,18 @@ export class OpenClawClient {
         ? [this.binPath, "bridge"]
         : ["bridge"];
 
-    const timeoutMs = options.timeout ?? 10000;
-
     return new Promise((resolve, reject) => {
+      // Allow caller to override defaults, but default to safe values if not provided
+      const ctx: BridgeContext = {
+        channel: "opencode-client",
+        isAdmin: true, // Legacy default, but now overridable
+        ...context,
+      };
+
       const payload = JSON.stringify({
         action,
         args,
-        context: {
-          channel: "opencode-client",
-          isAdmin: true, // Default to true for backward compatibility/ease of use, but overridable
-          ...options.context,
-        },
+        context: ctx,
       });
 
       const child = spawn(cmd, cmdArgs, {
@@ -84,8 +80,7 @@ export class OpenClawClient {
           const response = JSON.parse(stdout);
           resolve(response);
         } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : String(err);
-          reject(new Error(`Failed to parse response: ${errorMsg}\nOutput: ${stdout}`));
+          reject(new Error(`Failed to parse response: ${String(err)}\nOutput: ${stdout}`));
         }
       });
 
@@ -99,5 +94,5 @@ export class OpenClawClient {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const client = new OpenClawClient();
   console.log("Fetching agents...");
-  client.execute("agents.list").then(console.log).catch(console.error);
+  client.execute("agents.list", {}, { isAdmin: true }).then(console.log).catch(console.error);
 }

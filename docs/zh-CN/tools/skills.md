@@ -248,10 +248,10 @@ OpenClaw 在**会话开始时**对有资格的 Skills 进行快照，并在同�
 
 ## Token 影响（Skills 列表）
 
-当 Skills 有资格时，OpenClaw 将可用 Skills 的紧凑 XML 列表注入到系统提示词中（通过 `pi-coding-agent` 中的 `formatSkillsForPrompt`）。成本是确定性的：
+当 Skills 有资格时，OpenClaw 将紧凑的 Markdown Skills 索引注入到系统提示词中（通过 `formatSkillsIndex`）。描述被截断为 120 字符以节省 token。成本是确定性的：
 
-- **基础开销（仅当 ≥1 个 Skills 时）：** 195 字符。
-- **每个 Skills：** 97 字符 + XML 转义的 `<name>`、`<description>` 和 `<location>` 值的长度。
+- **基础开销（仅当 ≥1 个 Skills 时）：** 约 105 字符（标题行）。
+- **每个 Skills：** Skill 名称 + 截断描述（≤120 字符）+ 文件路径。
 
 公式（字符）：
 

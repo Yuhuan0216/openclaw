@@ -9,6 +9,12 @@ export const LEGACY_DAEMON_CLI_EXPORTS = [
 ] as const;
 
 type LegacyDaemonCliExport = (typeof LEGACY_DAEMON_CLI_EXPORTS)[number];
+export type LegacyDaemonCliAccessors = {
+  registerDaemonCli: string;
+  runDaemonRestart: string;
+} & Partial<
+  Record<Exclude<LegacyDaemonCliExport, "registerDaemonCli" | "runDaemonRestart">, string>
+>;
 
 const EXPORT_SPEC_RE = /^([A-Za-z_$][\w$]*)(?:\s+as\s+([A-Za-z_$][\w$]*))?$/;
 const REGISTER_CONTAINER_RE =
@@ -48,26 +54,22 @@ function findRegisterContainerSymbol(bundleSource: string): string | null {
 
 export function resolveLegacyDaemonCliAccessors(
   bundleSource: string,
-): Record<LegacyDaemonCliExport, string> | null {
+): LegacyDaemonCliAccessors | null {
   const aliases = parseExportAliases(bundleSource);
   if (!aliases) {
     return null;
   }
 
+  const registerContainer = findRegisterContainerSymbol(bundleSource);
+  const registerContainerAlias = registerContainer ? aliases.get(registerContainer) : undefined;
+  const registerDirectAlias = aliases.get("registerDaemonCli");
   const runDaemonInstall = aliases.get("runDaemonInstall");
   const runDaemonRestart = aliases.get("runDaemonRestart");
   const runDaemonStart = aliases.get("runDaemonStart");
   const runDaemonStatus = aliases.get("runDaemonStatus");
   const runDaemonStop = aliases.get("runDaemonStop");
   const runDaemonUninstall = aliases.get("runDaemonUninstall");
-  if (
-    !runDaemonInstall ||
-    !runDaemonRestart ||
-    !runDaemonStart ||
-    !runDaemonStatus ||
-    !runDaemonStop ||
-    !runDaemonUninstall
-  ) {
+  if (!(registerContainerAlias || registerDirectAlias) || !runDaemonRestart) {
     return null;
   }
 
@@ -75,35 +77,50 @@ export function resolveLegacyDaemonCliAccessors(
   // e.g. export { registerDaemonCli as t, runDaemonInstall as s, ... }
   const registerAlias = aliases.get("registerDaemonCli");
   if (registerAlias) {
-    return {
+    const accessors: LegacyDaemonCliAccessors = {
       registerDaemonCli: registerAlias,
-      runDaemonInstall,
       runDaemonRestart,
-      runDaemonStart,
-      runDaemonStatus,
-      runDaemonStop,
-      runDaemonUninstall,
     };
+    if (runDaemonInstall) {
+      accessors.runDaemonInstall = runDaemonInstall;
+    }
+    if (runDaemonStart) {
+      accessors.runDaemonStart = runDaemonStart;
+    }
+    if (runDaemonStatus) {
+      accessors.runDaemonStatus = runDaemonStatus;
+    }
+    if (runDaemonStop) {
+      accessors.runDaemonStop = runDaemonStop;
+    }
+    if (runDaemonUninstall) {
+      accessors.runDaemonUninstall = runDaemonUninstall;
+    }
+    return accessors;
   }
 
   // Legacy format: registerDaemonCli wrapped in __exportAll container
   // e.g. var x = __exportAll({ registerDaemonCli: () => registerDaemonCli })
-  const registerContainer = findRegisterContainerSymbol(bundleSource);
-  if (!registerContainer) {
-    return null;
-  }
-  const registerContainerAlias = aliases.get(registerContainer);
-  if (!registerContainerAlias) {
-    return null;
-  }
-
-  return {
-    registerDaemonCli: `${registerContainerAlias}.registerDaemonCli`,
-    runDaemonInstall,
+  const accessors: LegacyDaemonCliAccessors = {
+    registerDaemonCli: registerContainerAlias
+      ? `${registerContainerAlias}.registerDaemonCli`
+      : registerDirectAlias!,
     runDaemonRestart,
-    runDaemonStart,
-    runDaemonStatus,
-    runDaemonStop,
-    runDaemonUninstall,
   };
+  if (runDaemonInstall) {
+    accessors.runDaemonInstall = runDaemonInstall;
+  }
+  if (runDaemonStart) {
+    accessors.runDaemonStart = runDaemonStart;
+  }
+  if (runDaemonStatus) {
+    accessors.runDaemonStatus = runDaemonStatus;
+  }
+  if (runDaemonStop) {
+    accessors.runDaemonStop = runDaemonStop;
+  }
+  if (runDaemonUninstall) {
+    accessors.runDaemonUninstall = runDaemonUninstall;
+  }
+  return accessors;
 }

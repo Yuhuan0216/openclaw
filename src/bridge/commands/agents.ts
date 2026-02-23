@@ -1,9 +1,9 @@
 import { z } from "zod";
-import type { BridgeCommand, BridgeRegistry } from "../types.js";
 import { listAgentIds } from "../../agents/agent-scope.js";
 import { loadConfig } from "../../config/config.js";
 import { resolveAgentMainSessionKey } from "../../config/sessions.js";
 import { loadSessionEntry } from "../../gateway/session-utils.js";
+import type { BridgeRegistry } from "../types.js";
 
 const AgentsListSchema = z.object({
   filter: z.string().optional(),
@@ -80,6 +80,7 @@ export function wireAgentsBridgeCommands(registry: BridgeRegistry) {
       const sessionKey = resolveAgentMainSessionKey({ cfg: config, agentId: args.agentId });
       const { entry, storePath } = loadSessionEntry(sessionKey);
 
+      const agentCfg = config.agents?.list?.find((a) => a.id === args.agentId);
       // Gather stats (mock placeholder for now, real stats would come from session store/metrics)
       const stats = {
         sessionKey,
@@ -87,8 +88,8 @@ export function wireAgentsBridgeCommands(registry: BridgeRegistry) {
         lastActive: entry?.updatedAt ? new Date(entry.updatedAt).toISOString() : "never",
         model: entry?.modelOverride,
         provider: entry?.providerOverride,
-        capabilities: config.agents?.[args.agentId]?.capabilities || [],
-        description: config.agents?.[args.agentId]?.description,
+        capabilities: agentCfg?.skills || [],
+        description: agentCfg?.name,
       };
 
       return {

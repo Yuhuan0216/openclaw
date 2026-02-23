@@ -6,7 +6,7 @@ import { filterPromptEligibleSkills } from "./workspace.js";
 const mockEntry = (name: string, always?: boolean | string, disabled?: boolean): SkillEntry => ({
   skill: { name } as any,
   frontmatter: { always: always as any },
-  invocation: disabled ? { disableModelInvocation: true } : undefined,
+  invocation: disabled ? { disableModelInvocation: true, userInvocable: false } : undefined,
 });
 
 describe("filterPromptEligibleSkills", () => {

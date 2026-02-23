@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { loadSkillsFromDir, type Skill } from "@mariozechner/pi-coding-agent";
+import {
+  formatSkillsForPrompt,
+  loadSkillsFromDir,
+  type Skill,
+} from "@mariozechner/pi-coding-agent";
 import type { OpenClawConfig } from "../../config/config.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { CONFIG_DIR, resolveUserPath } from "../../utils.js";
@@ -401,45 +405,6 @@ function loadSkillEntries(
   return skillEntries;
 }
 
-function formatSkillsIndex(skills: Skill[], workspaceDir?: string): string {
-  const lines = [
-    "# SKILLS INDEX",
-    "Descriptions are truncated. Use 'read' to load detailed instructions from the provided <path>.",
-    "",
-  ];
-  for (const skill of skills) {
-    let refPath = skill.filePath;
-    // Try to make path relative to workspace for cleaner context
-    if (workspaceDir && path.isAbsolute(refPath) && refPath.startsWith(workspaceDir)) {
-      refPath = path.relative(workspaceDir, refPath);
-    }
-
-    lines.push(`## ${skill.name}`);
-    if (skill.description) {
-      const desc = skill.description.trim();
-      // Truncate description to save tokens (Dynamic Loading Phase 1)
-      const truncated = desc.length > 120 ? desc.slice(0, 117) + "..." : desc;
-      lines.push(`Description: ${truncated}`);
-    }
-    lines.push(`Path: ${refPath}`);
-    lines.push("");
-  }
-  return lines.join("\n");
-}
-
-export function filterPromptEligibleSkills(entries: SkillEntry[]): SkillEntry[] {
-  return entries.filter((entry) => {
-    if (entry.invocation?.disableModelInvocation === true) return false;
-
-    const isSearch = entry.skill.name === "skills-search";
-    // Check for both boolean true and string "true" (frontmatter values may be either)
-    const alwaysRaw: unknown = entry.frontmatter?.always;
-    const isAlways = alwaysRaw === true || alwaysRaw === "true";
-
-    return isSearch || isAlways;
-  });
-}
-
 function applySkillsPromptLimits(params: { skills: Skill[]; config?: OpenClawConfig }): {
   skillsForPrompt: Skill[];
   truncated: boolean;
@@ -454,7 +419,7 @@ function applySkillsPromptLimits(params: { skills: Skill[]; config?: OpenClawCon
   let truncatedReason: "count" | "chars" | null = truncated ? "count" : null;
 
   const fits = (skills: Skill[]): boolean => {
-    const block = formatSkillsIndex(skills);
+    const block = formatSkillsForPrompt(skills);
     return block.length <= limits.maxSkillsPromptChars;
   };
 
@@ -480,54 +445,16 @@ function applySkillsPromptLimits(params: { skills: Skill[]; config?: OpenClawCon
 
 export function buildWorkspaceSkillSnapshot(
   workspaceDir: string,
-  opts?: {
-    config?: OpenClawConfig;
-    managedSkillsDir?: string;
-    bundledSkillsDir?: string;
-    entries?: SkillEntry[];
-    /** If provided, only include skills with these names */
-    skillFilter?: string[];
-    eligibility?: SkillEligibilityContext;
-    snapshotVersion?: number;
-  },
+  opts?: WorkspaceSkillBuildOptions & { snapshotVersion?: number },
 ): SkillSnapshot {
-  const skillEntries = opts?.entries ?? loadSkillEntries(workspaceDir, opts);
-  const eligible = filterSkillEntries(
-    skillEntries,
-    opts?.config,
-    opts?.skillFilter,
-    opts?.eligibility,
-  );
-
-  // Dynamic Loading Phase 3: Only inject skills marked 'always: true' or 'skills-search'
-  const promptEntries = filterPromptEligibleSkills(eligible);
-  const resolvedSkills = promptEntries.map((entry) => entry.skill);
-  const remoteNote = opts?.eligibility?.remote?.note?.trim();
-
-  // Apply prompt size limits
-  const { skillsForPrompt, truncated } = applySkillsPromptLimits({
-    skills: resolvedSkills,
-    config: opts?.config,
-  });
-
-  // Append discovery hint if we filtered out skills
-  let indexContent = formatSkillsIndex(skillsForPrompt, workspaceDir);
-  if (eligible.length > promptEntries.length) {
-    indexContent +=
-      "\n\n(Note: Many skills are not listed here to save context. Use 'skills-search' to find capabilities.)";
-  }
-
-  const truncationNote = truncated
-    ? `⚠️ Skills truncated: included ${skillsForPrompt.length} of ${resolvedSkills.length}. Run \`openclaw skills check\` to audit.`
-    : "";
-
-  const prompt = [remoteNote, truncationNote, indexContent].filter(Boolean).join("\n");
+  const { eligible, prompt, resolvedSkills } = resolveWorkspaceSkillPromptState(workspaceDir, opts);
   const skillFilter = normalizeSkillFilter(opts?.skillFilter);
   return {
     prompt,
     skills: eligible.map((entry) => ({
       name: entry.skill.name,
       primaryEnv: entry.metadata?.primaryEnv,
+      requiredEnv: entry.metadata?.requires?.env?.slice(),
     })),
     ...(skillFilter === undefined ? {} : { skillFilter }),
     resolvedSkills,
@@ -537,17 +464,56 @@ export function buildWorkspaceSkillSnapshot(
 
 export function buildWorkspaceSkillsPrompt(
   workspaceDir: string,
-  opts?: {
-    config?: OpenClawConfig;
-    managedSkillsDir?: string;
-    bundledSkillsDir?: string;
-    entries?: SkillEntry[];
-    /** If provided, only include skills with these names */
-    skillFilter?: string[];
-    eligibility?: SkillEligibilityContext;
-  },
+  opts?: WorkspaceSkillBuildOptions,
 ): string {
-  return buildWorkspaceSkillSnapshot(workspaceDir, opts).prompt;
+  return resolveWorkspaceSkillPromptState(workspaceDir, opts).prompt;
+}
+
+type WorkspaceSkillBuildOptions = {
+  config?: OpenClawConfig;
+  managedSkillsDir?: string;
+  bundledSkillsDir?: string;
+  entries?: SkillEntry[];
+  /** If provided, only include skills with these names */
+  skillFilter?: string[];
+  eligibility?: SkillEligibilityContext;
+};
+
+function resolveWorkspaceSkillPromptState(
+  workspaceDir: string,
+  opts?: WorkspaceSkillBuildOptions,
+): {
+  eligible: SkillEntry[];
+  prompt: string;
+  resolvedSkills: Skill[];
+} {
+  const skillEntries = opts?.entries ?? loadSkillEntries(workspaceDir, opts);
+  const eligible = filterSkillEntries(
+    skillEntries,
+    opts?.config,
+    opts?.skillFilter,
+    opts?.eligibility,
+  );
+  const promptEntries = eligible.filter(
+    (entry) => entry.invocation?.disableModelInvocation !== true,
+  );
+  const remoteNote = opts?.eligibility?.remote?.note?.trim();
+  const resolvedSkills = promptEntries.map((entry) => entry.skill);
+  const { skillsForPrompt, truncated } = applySkillsPromptLimits({
+    skills: resolvedSkills,
+    config: opts?.config,
+  });
+  const truncationNote = truncated
+    ? `⚠️ Skills truncated: included ${skillsForPrompt.length} of ${resolvedSkills.length}. Run \`openclaw skills check\` to audit.`
+    : "";
+  const prompt = [
+    remoteNote,
+    truncationNote,
+    formatSkillsForPrompt(compactSkillPaths(skillsForPrompt)),
+  ]
+    .filter(Boolean)
+    .join("\n");
+  return { eligible, prompt, resolvedSkills };
 }
 
 export function resolveSkillsPromptForRun(params: {
@@ -656,14 +622,12 @@ export async function syncSkillsToWorkspace(params: {
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : JSON.stringify(error);
-        console.warn(
-          `[skills] Failed to resolve safe destination for ${entry.skill.name}: ${message}`,
-        );
+        skillsLogger.warn(`Failed to resolve safe destination for ${entry.skill.name}: ${message}`);
         continue;
       }
       if (!dest) {
-        console.warn(
-          `[skills] Failed to resolve safe destination for ${entry.skill.name}: invalid source directory name`,
+        skillsLogger.warn(
+          `Failed to resolve safe destination for ${entry.skill.name}: invalid source directory name`,
         );
         continue;
       }
@@ -674,9 +638,22 @@ export async function syncSkillsToWorkspace(params: {
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : JSON.stringify(error);
-        console.warn(`[skills] Failed to copy ${entry.skill.name} to sandbox: ${message}`);
+        skillsLogger.warn(`Failed to copy ${entry.skill.name} to sandbox: ${message}`);
       }
     }
+  });
+}
+
+// Local feature: filter skills eligible for inclusion in the agent prompt.
+// Only includes "skills-search" or skills with always:true frontmatter, and
+// excludes skills with disableModelInvocation set.
+export function filterPromptEligibleSkills(entries: SkillEntry[]): SkillEntry[] {
+  return entries.filter((entry) => {
+    if (entry.invocation?.disableModelInvocation === true) return false;
+    const isSearch = entry.skill.name === "skills-search";
+    const alwaysRaw: unknown = entry.frontmatter?.always;
+    const isAlways = alwaysRaw === true || alwaysRaw === "true";
+    return isSearch || isAlways;
   });
 }
 

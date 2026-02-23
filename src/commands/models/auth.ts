@@ -1,25 +1,33 @@
 import { confirm as clackConfirm, select as clackSelect, text as clackText } from "@clack/prompts";
-import type { ProviderAuthResult } from "../../plugins/types.js";
-import type { RuntimeEnv } from "../../runtime.js";
+import {
+  resolveAgentDir,
+  resolveAgentWorkspaceDir,
+  resolveDefaultAgentId,
+} from "../../agents/agent-scope.js";
+import { upsertAuthProfile } from "../../agents/auth-profiles.js";
+import type { AuthProfileCredential } from "../../agents/auth-profiles/types.js";
 import { normalizeProviderId } from "../../agents/model-selection.js";
+import { resolveDefaultAgentWorkspaceDir } from "../../agents/workspace.js";
 import { formatCliCommand } from "../../cli/command-format.js";
 import { parseDurationMs } from "../../cli/parse-duration.js";
 import { logConfigUpdated } from "../../config/logging.js";
+import { resolvePluginProviders } from "../../plugins/providers.js";
+import type { ProviderAuthResult, ProviderPlugin } from "../../plugins/types.js";
+import type { RuntimeEnv } from "../../runtime.js";
 import { stylePromptHint, stylePromptMessage } from "../../terminal/prompt-style.js";
 import { createClackPrompter } from "../../wizard/clack-prompter.js";
 import { validateAnthropicSetupToken } from "../auth-token.js";
 import { isRemoteEnvironment } from "../oauth-env.js";
 import { createVpsAwareOAuthHandlers } from "../oauth-flow.js";
+import { applyAuthProfileConfig } from "../onboard-auth.js";
 import { openUrl } from "../onboard-helpers.js";
 import {
-  credentialMode,
-  handleLoginResult,
-  prepareLoginEnv,
-  resolveLoginTarget,
-  resolveRequestedLoginProviderOrThrow,
-} from "./auth-login.logic.js";
-export { resolveRequestedLoginProviderOrThrow } from "./auth-login.logic.js";
-import { resolveDefaultTokenProfileId, saveTokenProfile } from "./auth-token.logic.js";
+  applyDefaultModel,
+  mergeConfigPatch,
+  pickAuthMethod,
+  resolveProviderMatch,
+} from "../provider-auth-helpers.js";
+import { loadValidConfigOrThrow, updateConfig } from "./shared.js";
 
 const confirm = (params: Parameters<typeof clackConfirm>[0]) =>
   clackConfirm({
@@ -54,6 +62,10 @@ function resolveTokenProvider(raw?: string): TokenProvider | "custom" | null {
   return "custom";
 }
 
+function resolveDefaultTokenProfileId(provider: string): string {
+  return `${normalizeProviderId(provider)}:manual`;
+}
+
 export async function modelsAuthSetupTokenCommand(
   opts: { provider?: string; yes?: boolean },
   runtime: RuntimeEnv,
@@ -84,11 +96,22 @@ export async function modelsAuthSetupTokenCommand(
   const token = String(tokenInput ?? "").trim();
   const profileId = resolveDefaultTokenProfileId(provider);
 
-  await saveTokenProfile({
-    provider,
+  upsertAuthProfile({
     profileId,
-    token,
+    credential: {
+      type: "token",
+      provider,
+      token,
+    },
   });
+
+  await updateConfig((cfg) =>
+    applyAuthProfileConfig(cfg, {
+      profileId,
+      provider,
+      mode: "token",
+    }),
+  );
 
   logConfigUpdated(runtime);
   runtime.log(`Auth profile: ${profileId} (${provider}/token)`);
@@ -115,17 +138,22 @@ export async function modelsAuthPasteTokenCommand(
   });
   const token = String(tokenInput ?? "").trim();
 
-  const expiresAt =
+  const expires =
     opts.expiresIn?.trim() && opts.expiresIn.trim().length > 0
       ? Date.now() + parseDurationMs(String(opts.expiresIn ?? "").trim(), { defaultUnit: "d" })
       : undefined;
 
-  await saveTokenProfile({
-    provider,
+  upsertAuthProfile({
     profileId,
-    token,
-    expiresAt,
+    credential: {
+      type: "token",
+      provider,
+      token,
+      ...(expires ? { expires } : {}),
+    },
   });
+
+  await updateConfig((cfg) => applyAuthProfileConfig(cfg, { profileId, provider, mode: "token" }));
 
   logConfigUpdated(runtime);
   runtime.log(`Auth profile: ${profileId} (${provider}/token)`);
@@ -212,13 +240,50 @@ type LoginOptions = {
   setDefault?: boolean;
 };
 
+export function resolveRequestedLoginProviderOrThrow(
+  providers: ProviderPlugin[],
+  rawProvider?: string,
+): ProviderPlugin | null {
+  const requested = rawProvider?.trim();
+  if (!requested) {
+    return null;
+  }
+  const matched = resolveProviderMatch(providers, requested);
+  if (matched) {
+    return matched;
+  }
+  const available = providers
+    .map((provider) => provider.id)
+    .filter(Boolean)
+    .toSorted((a, b) => a.localeCompare(b));
+  const availableText = available.length > 0 ? available.join(", ") : "(none)";
+  throw new Error(
+    `Unknown provider "${requested}". Loaded providers: ${availableText}. Verify plugins via \`${formatCliCommand("openclaw plugins list --json")}\`.`,
+  );
+}
+
+function credentialMode(credential: AuthProfileCredential): "api_key" | "oauth" | "token" {
+  if (credential.type === "api_key") {
+    return "api_key";
+  }
+  if (credential.type === "token") {
+    return "token";
+  }
+  return "oauth";
+}
+
 export async function modelsAuthLoginCommand(opts: LoginOptions, runtime: RuntimeEnv) {
   if (!process.stdin.isTTY) {
     throw new Error("models auth login requires an interactive TTY.");
   }
 
-  const { config, agentDir, workspaceDir, providers } = await prepareLoginEnv();
+  const config = await loadValidConfigOrThrow();
+  const defaultAgentId = resolveDefaultAgentId(config);
+  const agentDir = resolveAgentDir(config, defaultAgentId);
+  const workspaceDir =
+    resolveAgentWorkspaceDir(config, defaultAgentId) ?? resolveDefaultAgentWorkspaceDir();
 
+  const providers = resolvePluginProviders({ config, workspaceDir });
   if (providers.length === 0) {
     throw new Error(
       `No provider plugins found. Install one via \`${formatCliCommand("openclaw plugins install")}\`.`,
@@ -226,8 +291,6 @@ export async function modelsAuthLoginCommand(opts: LoginOptions, runtime: Runtim
   }
 
   const prompter = createClackPrompter();
-
-  // Resolve provider (CLI arg or interactive; throws on unknown --provider)
   const requestedProvider = resolveRequestedLoginProviderOrThrow(providers, opts.provider);
   const selectedProvider =
     requestedProvider ??
@@ -240,38 +303,29 @@ export async function modelsAuthLoginCommand(opts: LoginOptions, runtime: Runtim
           hint: provider.docsPath ? `Docs: ${provider.docsPath}` : undefined,
         })),
       })
-      .then((id) => {
-        const target = resolveLoginTarget(providers, { provider: String(id) });
-        return target.provider;
-      }));
+      .then((id) => resolveProviderMatch(providers, String(id))));
 
   if (!selectedProvider) {
     throw new Error("Unknown provider. Use --provider <id> to pick a provider plugin.");
   }
 
-  // Resolve method (CLI arg or interactive)
-  let chosenMethod = resolveLoginTarget(providers, {
-    ...opts,
-    provider: selectedProvider.id,
-  }).method;
-  if (!chosenMethod) {
-    if (selectedProvider.auth.length === 1) {
-      chosenMethod = selectedProvider.auth[0];
-    } else {
-      const id = await prompter.select({
-        message: `Auth method for ${selectedProvider.label}`,
-        options: selectedProvider.auth.map((method) => ({
-          value: method.id,
-          label: method.label,
-          hint: method.hint,
-        })),
-      });
-      chosenMethod = selectedProvider.auth.find((method) => method.id === String(id))!;
-    }
-  }
+  const chosenMethod =
+    pickAuthMethod(selectedProvider, opts.method) ??
+    (selectedProvider.auth.length === 1
+      ? selectedProvider.auth[0]
+      : await prompter
+          .select({
+            message: `Auth method for ${selectedProvider.label}`,
+            options: selectedProvider.auth.map((method) => ({
+              value: method.id,
+              label: method.label,
+              hint: method.hint,
+            })),
+          })
+          .then((id) => selectedProvider.auth.find((method) => method.id === String(id))));
 
   if (!chosenMethod) {
-    throw new Error("Unknown auth method.");
+    throw new Error("Unknown auth method. Use --method <id> to select one.");
   }
 
   const isRemote = isRemoteEnvironment();
@@ -290,10 +344,30 @@ export async function modelsAuthLoginCommand(opts: LoginOptions, runtime: Runtim
     },
   });
 
-  await handleLoginResult({
-    result,
-    agentDir,
-    setDefault: opts.setDefault,
+  for (const profile of result.profiles) {
+    upsertAuthProfile({
+      profileId: profile.profileId,
+      credential: profile.credential,
+      agentDir,
+    });
+  }
+
+  await updateConfig((cfg) => {
+    let next = cfg;
+    if (result.configPatch) {
+      next = mergeConfigPatch(next, result.configPatch);
+    }
+    for (const profile of result.profiles) {
+      next = applyAuthProfileConfig(next, {
+        profileId: profile.profileId,
+        provider: profile.credential.provider,
+        mode: credentialMode(profile.credential),
+      });
+    }
+    if (opts.setDefault && result.defaultModel) {
+      next = applyDefaultModel(next, result.defaultModel);
+    }
+    return next;
   });
 
   logConfigUpdated(runtime);

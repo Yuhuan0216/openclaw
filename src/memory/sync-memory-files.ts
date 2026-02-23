@@ -1,8 +1,8 @@
 import type { DatabaseSync } from "node:sqlite";
-import type { SyncProgressState } from "./sync-progress.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { buildFileEntry, listMemoryFiles, type MemoryFileEntry } from "./internal.js";
 import { indexFileEntryIfChanged } from "./sync-index.js";
+import type { SyncProgressState } from "./sync-progress.js";
 import { bumpSyncProgressTotal } from "./sync-progress.js";
 import { deleteStaleIndexedPaths } from "./sync-stale.js";
 
@@ -25,9 +25,10 @@ export async function syncMemoryFiles(params: {
   model: string;
 }) {
   const files = await listMemoryFiles(params.workspaceDir, params.extraPaths);
-  const fileEntries = await Promise.all(
+  const fileEntriesRaw = await Promise.all(
     files.map(async (file) => buildFileEntry(file, params.workspaceDir)),
   );
+  const fileEntries = fileEntriesRaw.filter((e): e is MemoryFileEntry => e !== null);
 
   log.debug("memory sync: indexing memory files", {
     files: fileEntries.length,

@@ -17,11 +17,20 @@ vi.mock("../../agents/auth-profiles.js", () => ({
     },
   }),
   resolveAuthStorePathForDisplay: () => "/mock/agent/dir/auth-profiles.json",
-  resolveProfileDisplayInfos: ({ provider }: { provider: string }) => [
-    { id: `${provider}/default`, name: "Default", isDefault: true, isActive: true },
-  ],
   listProfilesForProvider: ({ provider }: { provider: string }) => [
     { id: `${provider}/default`, provider, email: "mock@example.com" },
+  ],
+}));
+vi.mock("./list.auth-overview.js", () => ({
+  resolveProfileDisplayInfos: ({ provider }: { provider: string }) => [
+    {
+      profileId: `${provider}/default`,
+      provider,
+      type: "api_key",
+      status: "ok",
+      active: true,
+      detail: "",
+    },
   ],
 }));
 vi.mock("../../config/config.js", () => ({
@@ -46,6 +55,6 @@ describe("modelsAuthListLogic", () => {
   it("should filter by provider", async () => {
     const result = await modelsAuthListLogic({ provider: "openai" });
     expect(result.profiles).toHaveLength(1);
-    expect(result.profiles[0].id).toContain("openai");
+    expect(result.profiles[0].profileId).toContain("openai");
   });
 });

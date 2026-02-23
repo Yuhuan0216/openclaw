@@ -1,5 +1,5 @@
-import { Command } from "commander";
 import { readFileSync } from "node:fs";
+import { Command } from "commander";
 import { z } from "zod";
 import { wireAgentsBridgeCommands } from "../bridge/commands/agents.js";
 import { wireModelsBridgeCommands } from "../bridge/commands/models.js";
@@ -13,13 +13,13 @@ wireModelsBridgeCommands(bridgeRegistry);
 // Schema for Bridge Input
 const BridgeInputSchema = z.object({
   action: z.string(),
-  args: z.record(z.any()).optional(),
+  args: z.record(z.string(), z.any()).optional(),
   context: z
     .object({
       channel: z.string().optional(),
       userId: z.string().optional(),
       isAdmin: z.boolean().optional(),
-      metadata: z.record(z.any()).optional(),
+      metadata: z.record(z.string(), z.any()).optional(),
     })
     .optional(),
 });

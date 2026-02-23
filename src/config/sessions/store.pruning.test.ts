@@ -3,8 +3,8 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { SessionEntry } from "./types.js";
 import { capEntryCount, pruneStaleEntries, rotateSessionFile } from "./store.js";
+import type { SessionEntry } from "./types.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -105,7 +105,8 @@ describe("rotateSessionFile", () => {
     let now = Date.now();
     const nowSpy = vi.spyOn(Date, "now").mockImplementation(() => (now += 5));
     try {
-      for (let i = 0; i < 5; i++) {
+      // 4 rotations are enough to verify pruning to <=3 backups.
+      for (let i = 0; i < 4; i++) {
         await fs.writeFile(storePath, `data-${i}-${"x".repeat(100)}`, "utf-8");
         await rotateSessionFile(storePath, 50);
       }

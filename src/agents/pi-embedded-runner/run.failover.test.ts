@@ -45,7 +45,7 @@ vi.mock("../context-window-guard.js", () => ({
   CONTEXT_WINDOW_HARD_MIN_TOKENS: 100,
 }));
 vi.mock("../model-selection.js", () => ({
-  normalizeProviderId: (p) => p,
+  normalizeProviderId: (p: string) => p,
 }));
 vi.mock("./logger.js", () => ({
   log: { warn: vi.fn(), error: vi.fn(), debug: vi.fn(), info: vi.fn() },
@@ -107,8 +107,9 @@ describe("runEmbeddedPiAgent - Failover Logic", () => {
     } as any);
     vi.mocked(modelAuthModule.getApiKeyForModel).mockResolvedValue({
       apiKey: "key",
-      mode: "direct",
+      mode: "api-key",
       profileId: "profile1",
+      source: "profile:profile1",
     });
 
     // Mock auth profiles helpers

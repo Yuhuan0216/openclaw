@@ -1,4 +1,3 @@
-import type { AgentCommandOpts } from "./agent/types.js";
 import {
   listAgentIds,
   resolveAgentDir,
@@ -41,8 +40,12 @@ import { formatCliCommand } from "../cli/command-format.js";
 import { type CliDeps, createDefaultDeps } from "../cli/deps.js";
 import { loadConfig } from "../config/config.js";
 import {
+  parseSessionThreadInfo,
+  resolveAndPersistSessionFile,
   resolveAgentIdFromSessionKey,
   resolveSessionFilePath,
+  resolveSessionFilePathOptions,
+  resolveSessionTranscriptPath,
   type SessionEntry,
   updateSessionStore,
 } from "../config/sessions.js";
@@ -62,6 +65,7 @@ import { deliverAgentCommandResult } from "./agent/delivery.js";
 import { resolveAgentRunContext } from "./agent/run-context.js";
 import { updateSessionStoreAfterAgentRun } from "./agent/session-store.js";
 import { resolveSession } from "./agent/session.js";
+import type { AgentCommandOpts } from "./agent/types.js";
 
 const FALLBACK_HISTORY_LIMIT = 5;
 
@@ -372,6 +376,7 @@ export async function agentCommand(
         storePath,
         entry: next,
       });
+      sessionEntry = next;
     }
 
     const agentModelPrimary = resolveAgentModelPrimary(cfg, sessionAgentId);
@@ -518,9 +523,33 @@ export async function agentCommand(
         });
       }
     }
-    const sessionFile = resolveSessionFilePath(sessionId, sessionEntry, {
+    const sessionPathOpts = resolveSessionFilePathOptions({
       agentId: sessionAgentId,
+      storePath,
     });
+    let sessionFile = resolveSessionFilePath(sessionId, sessionEntry, sessionPathOpts);
+    if (sessionStore && sessionKey) {
+      const threadIdFromSessionKey = parseSessionThreadInfo(sessionKey).threadId;
+      const fallbackSessionFile = !sessionEntry?.sessionFile
+        ? resolveSessionTranscriptPath(
+            sessionId,
+            sessionAgentId,
+            opts.threadId ?? threadIdFromSessionKey,
+          )
+        : undefined;
+      const resolvedSessionFile = await resolveAndPersistSessionFile({
+        sessionId,
+        sessionKey,
+        sessionStore,
+        storePath,
+        sessionEntry,
+        agentId: sessionPathOpts?.agentId,
+        sessionsDir: sessionPathOpts?.sessionsDir,
+        fallbackSessionFile,
+      });
+      sessionFile = resolvedSessionFile.sessionFile;
+      sessionEntry = resolvedSessionFile.sessionEntry;
+    }
 
     const startedAt = Date.now();
     let lifecycleEnded = false;
@@ -552,13 +581,12 @@ export async function agentCommand(
         model,
         agentDir,
         fallbacksOverride: effectiveFallbacksOverride,
-        run: (providerOverride, modelOverride, profileIdOverride) => {
+        run: (providerOverride, modelOverride) => {
           const isFallbackRetry = fallbackAttemptIndex > 0;
           fallbackAttemptIndex += 1;
           return runAgentAttempt({
             providerOverride,
             modelOverride,
-            profileIdOverride,
             cfg,
             sessionEntry,
             sessionId,

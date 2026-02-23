@@ -84,6 +84,22 @@ describe("monitorSlackProvider tool results", () => {
     });
   }
 
+  function setPairingOnlyDirectMessages() {
+    const currentConfig = slackTestState.config as {
+      channels?: { slack?: Record<string, unknown> };
+    };
+    slackTestState.config = {
+      ...currentConfig,
+      channels: {
+        ...currentConfig.channels,
+        slack: {
+          ...currentConfig.channels?.slack,
+          dm: { enabled: true, policy: "pairing", allowFrom: [] },
+        },
+      },
+    };
+  }
+
   it("skips tool summaries with responsePrefix", async () => {
     replyMock.mockResolvedValue({ text: "final reply" });
 
@@ -284,6 +300,7 @@ describe("monitorSlackProvider tool results", () => {
       return { text: "final reply" };
     });
 
+    setDirectMessageReplyMode("all");
     await runSlackMessageOnce(monitorSlackProvider, {
       event: makeSlackMessageEvent(),
     });
@@ -426,7 +443,7 @@ describe("monitorSlackProvider tool results", () => {
     expect(sendMock.mock.calls[0][2]).toMatchObject({ threadTs: "111.222" });
   });
 
-  it("forces thread replies when replyToId is set", async () => {
+  it("ignores replyToId directive when replyToMode is off", async () => {
     replyMock.mockResolvedValue({ text: "forced reply", replyToId: "555" });
     slackTestState.config = {
       messages: {
@@ -443,6 +460,20 @@ describe("monitorSlackProvider tool results", () => {
         },
       },
     };
+
+    await runSlackMessageOnce(monitorSlackProvider, {
+      event: makeSlackMessageEvent({
+        ts: "789",
+      }),
+    });
+
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(sendMock.mock.calls[0][2]).toMatchObject({ threadTs: undefined });
+  });
+
+  it("keeps replyToId directive threading when replyToMode is all", async () => {
+    replyMock.mockResolvedValue({ text: "forced reply", replyToId: "555" });
+    setDirectMessageReplyMode("all");
 
     await runSlackMessageOnce(monitorSlackProvider, {
       event: makeSlackMessageEvent({
@@ -483,19 +514,7 @@ describe("monitorSlackProvider tool results", () => {
   });
 
   it("replies with pairing code when dmPolicy is pairing and no allowFrom is set", async () => {
-    const currentConfig = slackTestState.config as {
-      channels?: { slack?: Record<string, unknown> };
-    };
-    slackTestState.config = {
-      ...currentConfig,
-      channels: {
-        ...currentConfig.channels,
-        slack: {
-          ...currentConfig.channels?.slack,
-          dm: { enabled: true, policy: "pairing", allowFrom: [] },
-        },
-      },
-    };
+    setPairingOnlyDirectMessages();
 
     await runSlackMessageOnce(monitorSlackProvider, {
       event: makeSlackMessageEvent(),
@@ -509,19 +528,7 @@ describe("monitorSlackProvider tool results", () => {
   });
 
   it("does not resend pairing code when a request is already pending", async () => {
-    const currentConfig = slackTestState.config as {
-      channels?: { slack?: Record<string, unknown> };
-    };
-    slackTestState.config = {
-      ...currentConfig,
-      channels: {
-        ...currentConfig.channels,
-        slack: {
-          ...currentConfig.channels?.slack,
-          dm: { enabled: true, policy: "pairing", allowFrom: [] },
-        },
-      },
-    };
+    setPairingOnlyDirectMessages();
     upsertPairingRequestMock
       .mockResolvedValueOnce({ code: "PAIRCODE", created: true })
       .mockResolvedValueOnce({ code: "PAIRCODE", created: false });

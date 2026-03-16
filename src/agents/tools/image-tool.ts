@@ -1,8 +1,7 @@
-import { type Api, type Context, complete, type Model } from "@mariozechner/pi-ai";
+import { type Context, complete } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
 import type { OpenClawConfig } from "../../config/config.js";
-import type { SandboxFsBridge } from "../sandbox/fs-bridge.js";
-import type { AnyAgentTool } from "./common.js";
+import { loadWebMedia } from "../../plugin-sdk/web-media.js";
 import { resolveUserPath } from "../../utils.js";
 import { isMinimaxVlmModel, isMinimaxVlmProvider, minimaxUnderstandImage } from "../minimax-vlm.js";
 import {

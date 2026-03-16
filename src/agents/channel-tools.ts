@@ -1,3 +1,4 @@
+import { getChannelPlugin, listChannelPlugins } from "../channels/plugins/index.js";
 import type {
   ChannelAgentTool,
   ChannelMessageActionName,
@@ -5,7 +6,6 @@ import type {
 } from "../channels/plugins/types.js";
 import type { OpenClawConfig } from "../config/config.js";
 import { getChannelDock } from "../channels/dock.js";
-import { getChannelPlugin, listChannelPlugins } from "../channels/plugins/index.js";
 import { normalizeAnyChannelId } from "../channels/registry.js";
 import { defaultRuntime } from "../runtime.js";
 
@@ -73,8 +73,7 @@ export function resolveChannelMessageToolHints(params: {
   if (!channelId) {
     return [];
   }
-  const dock = getChannelDock(channelId);
-  const resolve = dock?.agentPrompt?.messageToolHints;
+  const resolve = getChannelPlugin(channelId)?.agentPrompt?.messageToolHints;
   if (!resolve) {
     return [];
   }

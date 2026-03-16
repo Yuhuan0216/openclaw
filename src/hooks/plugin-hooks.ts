@@ -1,10 +1,27 @@
+import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import type { OpenClawConfig } from "../config/config.js";
+import { createSubsystemLogger } from "../logging/subsystem.js";
+import {
+  normalizePluginsConfig,
+  resolveEffectiveEnableState,
+  resolveMemorySlotDecision,
+} from "../plugins/config-state.js";
+import { loadPluginManifestRegistry } from "../plugins/manifest-registry.js";
 import type { OpenClawPluginApi } from "../plugins/types.js";
+import { isPathInsideWithRealpath } from "../security/scan-paths.js";
 import type { InternalHookHandler } from "./internal-hooks.js";
-import type { HookEntry } from "./types.js";
 import { shouldIncludeHook } from "./config.js";
+import type { HookEntry } from "./types.js";
 import { loadHookEntriesFromDir } from "./workspace.js";
+
+const log = createSubsystemLogger("hooks");
+
+export type PluginHookDirEntry = {
+  dir: string;
+  pluginId: string;
+};
 
 export type PluginHookLoadResult = {
   hooks: HookEntry[];
@@ -113,4 +130,81 @@ export async function registerPluginHooksFromDir(
   }
 
   return result;
+}
+
+export function resolvePluginHookDirs(params: {
+  workspaceDir: string | undefined;
+  config?: OpenClawConfig;
+}): PluginHookDirEntry[] {
+  const workspaceDir = (params.workspaceDir ?? "").trim();
+  if (!workspaceDir) {
+    return [];
+  }
+  const registry = loadPluginManifestRegistry({
+    workspaceDir,
+    config: params.config,
+  });
+  if (registry.plugins.length === 0) {
+    return [];
+  }
+
+  const normalizedPlugins = normalizePluginsConfig(params.config?.plugins);
+  const memorySlot = normalizedPlugins.slots.memory;
+  let selectedMemoryPluginId: string | null = null;
+  const seen = new Set<string>();
+  const resolved: PluginHookDirEntry[] = [];
+
+  for (const record of registry.plugins) {
+    if (!record.hooks || record.hooks.length === 0) {
+      continue;
+    }
+    const enableState = resolveEffectiveEnableState({
+      id: record.id,
+      origin: record.origin,
+      config: normalizedPlugins,
+      rootConfig: params.config,
+    });
+    if (!enableState.enabled) {
+      continue;
+    }
+
+    const memoryDecision = resolveMemorySlotDecision({
+      id: record.id,
+      kind: record.kind,
+      slot: memorySlot,
+      selectedId: selectedMemoryPluginId,
+    });
+    if (!memoryDecision.enabled) {
+      continue;
+    }
+    if (memoryDecision.selected && record.kind === "memory") {
+      selectedMemoryPluginId = record.id;
+    }
+
+    for (const raw of record.hooks) {
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        continue;
+      }
+      const candidate = path.resolve(record.rootDir, trimmed);
+      if (!fs.existsSync(candidate)) {
+        log.warn(`plugin hook path not found (${record.id}): ${candidate}`);
+        continue;
+      }
+      if (!isPathInsideWithRealpath(record.rootDir, candidate, { requireRealpath: true })) {
+        log.warn(`plugin hook path escapes plugin root (${record.id}): ${candidate}`);
+        continue;
+      }
+      if (seen.has(candidate)) {
+        continue;
+      }
+      seen.add(candidate);
+      resolved.push({
+        dir: candidate,
+        pluginId: record.id,
+      });
+    }
+  }
+
+  return resolved;
 }

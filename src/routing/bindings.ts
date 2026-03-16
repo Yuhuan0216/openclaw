@@ -1,31 +1,9 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { z } from "zod";
-import type { OpenClawConfig } from "../config/config.js";
-import type { AgentBinding } from "../config/types.agents.js";
 import { resolveDefaultAgentId } from "../agents/agent-scope.js";
 import { normalizeChatChannelId } from "../channels/registry.js";
-import { createSubsystemLogger } from "../logging/subsystem.js";
-import { resolveConfigDir } from "../utils.js";
+import { listRouteBindings } from "../config/bindings.js";
+import type { OpenClawConfig } from "../config/config.js";
+import type { AgentRouteBinding } from "../config/types.agents.js";
 import { normalizeAccountId, normalizeAgentId } from "./session-key.js";
-
-const log = createSubsystemLogger("routing/bindings");
-
-const AgentBindingSchema = z.object({
-  agentId: z.string(),
-  match: z.object({
-    channel: z.string(),
-    accountId: z.string().optional(),
-    peer: z
-      .object({
-        kind: z.enum(["dm", "group", "channel"]),
-        id: z.string(),
-      })
-      .optional(),
-    guildId: z.string().optional(),
-    teamId: z.string().optional(),
-  }),
-});
 
 function normalizeBindingChannelId(raw?: string | null): string | null {
   const normalized = normalizeChatChannelId(raw);
@@ -36,57 +14,11 @@ function normalizeBindingChannelId(raw?: string | null): string | null {
   return fallback || null;
 }
 
-let cachedExtraBindings: AgentBinding[] | null = null;
-
-export function loadExtraBindings(): AgentBinding[] {
-  if (cachedExtraBindings !== null) {
-    return cachedExtraBindings;
-  }
-
-  const paths = [join(resolveConfigDir(), "routing.json"), join(process.cwd(), "routing.json")];
-
-  const allBindings: AgentBinding[] = [];
-
-  for (const path of paths) {
-    try {
-      if (existsSync(path)) {
-        const content = readFileSync(path, "utf-8");
-        const json = JSON.parse(content);
-        if (Array.isArray(json)) {
-          for (let i = 0; i < json.length; i++) {
-            const result = AgentBindingSchema.safeParse(json[i]);
-            if (result.success) {
-              allBindings.push(result.data as AgentBinding);
-            } else {
-              log.debug(
-                `Invalid binding at index ${i} in ${path}: ${JSON.stringify(result.error.format())}`,
-              );
-            }
-          }
-        } else {
-          log.debug(`routing.json root must be an array in ${path}`);
-        }
-      }
-    } catch (error) {
-      log.debug(`Failed to load routing.json from ${path}: ${String(error)}`);
-    }
-  }
-
-  cachedExtraBindings = allBindings;
-  return cachedExtraBindings;
+export function listBindings(cfg: OpenClawConfig): AgentRouteBinding[] {
+  return listRouteBindings(cfg);
 }
 
-export function resetBindingsCacheForTest() {
-  cachedExtraBindings = null;
-}
-
-export function listBindings(cfg: OpenClawConfig): AgentBinding[] {
-  const extra = loadExtraBindings();
-  const configBindings = Array.isArray(cfg.bindings) ? cfg.bindings : [];
-  return [...extra, ...configBindings];
-}
-
-function resolveNormalizedBindingMatch(binding: AgentBinding): {
+function resolveNormalizedBindingMatch(binding: AgentRouteBinding): {
   agentId: string;
   accountId: string;
   channelId: string;

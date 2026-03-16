@@ -177,6 +177,12 @@ headers are trusted.
 `webhookSecurity.trustedProxyIPs` only trusts forwarded headers when the request
 remote IP matches the list.
 
+Webhook replay protection is enabled for Twilio and Plivo. Replayed valid webhook
+requests are acknowledged but skipped for side effects.
+
+Twilio conversation turns include a per-turn token in `<Gather>` callbacks, so
+stale/replayed speech callbacks cannot satisfy a newer pending transcript turn.
+
 Example with a stable public host:
 
 ```json5
@@ -289,6 +295,12 @@ Inbound policy defaults to `disabled`. To enable inbound calls, set:
   inboundGreeting: "Hello! How can I help?",
 }
 ```
+
+`inboundPolicy: "allowlist"` is a low-assurance caller-ID screen. The plugin
+normalizes the provider-supplied `From` value and compares it to `allowFrom`.
+Webhook verification authenticates provider delivery and payload integrity, but
+it does not prove PSTN/VoIP caller-number ownership. Treat `allowFrom` as
+caller-ID filtering, not strong caller identity.
 
 Auto-responses use the agent system. Tune with:
 

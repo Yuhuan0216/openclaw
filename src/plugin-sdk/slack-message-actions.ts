@@ -1,7 +1,9 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-import type { ChannelMessageActionContext } from "../channels/plugins/types.js";
+import { parseSlackBlocksInput } from "../../extensions/slack/src/blocks-input.js";
+import { buildSlackInteractiveBlocks } from "../../extensions/slack/src/blocks-render.js";
 import { readNumberParam, readStringParam } from "../agents/tools/common.js";
-import { parseSlackBlocksInput } from "../slack/blocks-input.js";
+import type { ChannelMessageActionContext } from "../channels/plugins/types.js";
+import { normalizeInteractiveReply } from "../interactive/payload.js";
 
 type SlackActionInvoke = (
   action: Record<string, unknown>,
@@ -37,7 +39,9 @@ export async function handleSlackMessageAction(params: {
       allowEmpty: true,
     });
     const mediaUrl = readStringParam(actionParams, "media", { trim: false });
-    const blocks = readSlackBlocksParam(actionParams);
+    const interactive = normalizeInteractiveReply(actionParams.interactive);
+    const interactiveBlocks = interactive ? buildSlackInteractiveBlocks(interactive) : undefined;
+    const blocks = readSlackBlocksParam(actionParams) ?? interactiveBlocks;
     if (!content && !mediaUrl && !blocks) {
       throw new Error("Slack send requires message, blocks, or media.");
     }
@@ -52,9 +56,9 @@ export async function handleSlackMessageAction(params: {
         to,
         content: content ?? "",
         mediaUrl: mediaUrl ?? undefined,
-        blocks,
         accountId,
         threadTs: threadId ?? replyTo ?? undefined,
+        ...(blocks ? { blocks } : {}),
       },
       cfg,
       ctx.toolContext,
@@ -174,6 +178,24 @@ export async function handleSlackMessageAction(params: {
   if (action === "emoji-list") {
     const limit = readNumberParam(actionParams, "limit", { integer: true });
     return await invoke({ action: "emojiList", limit, accountId }, cfg);
+  }
+
+  if (action === "download-file") {
+    const fileId = readStringParam(actionParams, "fileId", { required: true });
+    const channelId =
+      readStringParam(actionParams, "channelId") ?? readStringParam(actionParams, "to");
+    const threadId =
+      readStringParam(actionParams, "threadId") ?? readStringParam(actionParams, "replyTo");
+    return await invoke(
+      {
+        action: "downloadFile",
+        fileId,
+        channelId: channelId ?? undefined,
+        threadId: threadId ?? undefined,
+        accountId,
+      },
+      cfg,
+    );
   }
 
   throw new Error(`Action ${action} is not supported for provider ${providerId}.`);

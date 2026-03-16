@@ -1,3 +1,4 @@
+import { getChannelPlugin, listChannelPlugins } from "../channels/plugins/index.js";
 import type {
   ChannelAgentTool,
   ChannelMessageActionName,
@@ -73,8 +74,7 @@ export function resolveChannelMessageToolHints(params: {
   if (!channelId) {
     return [];
   }
-  const dock = getChannelDock(channelId);
-  const resolve = dock?.agentPrompt?.messageToolHints;
+  const resolve = getChannelPlugin(channelId)?.agentPrompt?.messageToolHints;
   if (!resolve) {
     return [];
   }

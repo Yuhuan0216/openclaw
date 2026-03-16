@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
+import { listAgentIds } from "../../agents/agent-scope.js";
+import { clearBootstrapSnapshotOnSessionRollover } from "../../agents/bootstrap-cache.js";
 import type { MsgContext } from "../../auto-reply/templating.js";
 import type { OpenClawConfig } from "../../config/config.js";
-import { listAgentIds } from "../../agents/agent-scope.js";
 import {
   normalizeThinkLevel,
   normalizeVerboseLevel,
@@ -143,6 +144,11 @@ export function resolveSession(opts: {
   const sessionId =
     opts.sessionId?.trim() || (fresh ? sessionEntry?.sessionId : undefined) || crypto.randomUUID();
   const isNewSession = !fresh && !opts.sessionId;
+
+  clearBootstrapSnapshotOnSessionRollover({
+    sessionKey,
+    previousSessionId: isNewSession ? sessionEntry?.sessionId : undefined,
+  });
 
   const persistedThinking =
     fresh && sessionEntry?.thinkingLevel

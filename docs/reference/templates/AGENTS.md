@@ -13,7 +13,7 @@ This folder is home. Treat it that way.
 
 If `BOOTSTRAP.md` exists, that's your birth certificate. Follow it, figure out who you are, then delete it.
 
-## Every Session
+## Session Startup
 
 Before doing anything else:
 
@@ -39,7 +39,7 @@ Before doing anything else:
 - "Remember this" → Update files.
 - Learned a lesson? → Update AGENTS.md/TOOLS.md.
 
-## Safety
+## Red Lines
 
 - No exfiltration of private data.
 - No destructive commands without asking (`trash` > `rm`).

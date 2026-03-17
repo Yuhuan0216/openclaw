@@ -7,9 +7,9 @@ import { buildGroupHistoryKey } from "../../../../../src/routing/session-key.js"
 import { normalizeE164 } from "../../../../../src/utils.js";
 import type { MentionConfig } from "../mentions.js";
 import type { WebInboundMsg } from "../types.js";
+import { maybeBroadcastMessage } from "./broadcast.js";
 import type { EchoTracker } from "./echo.js";
 import type { GroupHistoryEntry } from "./group-gating.js";
-import { maybeBroadcastMessage } from "./broadcast.js";
 import { applyGroupGating } from "./group-gating.js";
 import { updateLastRouteInBackground } from "./last-route.js";
 import { resolvePeerId } from "./peer.js";

@@ -2,8 +2,6 @@ import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import WebSocket from "ws";
-import type { ResolvedBrowserConfig, ResolvedBrowserProfile } from "./config.js";
 import type { SsrFPolicy } from "../infra/net/ssrf.js";
 import { ensurePortAvailable } from "../infra/ports.js";
 import { rawDataToString } from "../infra/ws.js";
@@ -37,6 +35,7 @@ import {
   ensureProfileCleanExit,
   isProfileDecorated,
 } from "./chrome.profile-decoration.js";
+import type { ResolvedBrowserConfig, ResolvedBrowserProfile } from "./config.js";
 import {
   DEFAULT_OPENCLAW_BROWSER_COLOR,
   DEFAULT_OPENCLAW_BROWSER_PROFILE_NAME,

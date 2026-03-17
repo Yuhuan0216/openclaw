@@ -7,15 +7,15 @@
  * across multiple providers.
  */
 
-import type { OpenClawConfig } from "../../config/config.js";
-import type { OriginatingChannelType } from "../templating.js";
-import type { ReplyPayload } from "../types.js";
 import { resolveSessionAgentId } from "../../agents/agent-scope.js";
 import { resolveEffectiveMessagesConfig } from "../../agents/identity.js";
 import { getChannelPlugin, normalizeChannelId } from "../../channels/plugins/index.js";
+import type { OpenClawConfig } from "../../config/config.js";
 import { buildOutboundSessionContext } from "../../infra/outbound/session-context.js";
 import { hasReplyContent } from "../../interactive/payload.js";
 import { INTERNAL_MESSAGE_CHANNEL, normalizeMessageChannel } from "../../utils/message-channel.js";
+import type { OriginatingChannelType } from "../templating.js";
+import type { ReplyPayload } from "../types.js";
 import { normalizeReplyPayload } from "./normalize-reply.js";
 import {
   formatBtwTextForExternalDelivery,

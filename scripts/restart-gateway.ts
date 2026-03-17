@@ -18,7 +18,7 @@ async function checkHealth(): Promise<boolean> {
     const { stdout } = await execAsync(`curl -s -f ${HEALTH_URL}`);
     // Check for explicit "ok" or typical health JSON response
     return stdout.includes("ok") || stdout.includes('"status":"ok"');
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -66,4 +66,4 @@ async function main() {
   process.exit(1);
 }
 
-main();
+main().catch(console.error);

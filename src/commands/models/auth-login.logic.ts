@@ -1,15 +1,15 @@
-import type { AuthProfileCredential } from "../../agents/auth-profiles/types.js";
-import type { ProviderAuthResult, ProviderPlugin } from "../../plugins/types.js";
 import {
   resolveAgentDir,
   resolveAgentWorkspaceDir,
   resolveDefaultAgentId,
 } from "../../agents/agent-scope.js";
 import { upsertAuthProfile } from "../../agents/auth-profiles.js";
+import type { AuthProfileCredential } from "../../agents/auth-profiles/types.js";
 import { resolveDefaultAgentWorkspaceDir } from "../../agents/workspace.js";
 import { formatCliCommand } from "../../cli/command-format.js";
 import { readConfigFileSnapshot } from "../../config/config.js";
 import { resolvePluginProviders } from "../../plugins/providers.js";
+import type { ProviderAuthResult, ProviderPlugin } from "../../plugins/types.js";
 import { applyAuthProfileConfig } from "../onboard-auth.js";
 import {
   applyDefaultModel,

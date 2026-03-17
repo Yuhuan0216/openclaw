@@ -1,5 +1,4 @@
 import { Routes } from "discord-api-types/v10";
-import type { DiscordReactionSummary, DiscordReactOpts } from "./send.types.js";
 import { loadConfig } from "../../../src/config/config.js";
 import {
   buildReactionIdentifier,
@@ -7,6 +6,7 @@ import {
   formatReactionEmoji,
   normalizeReactionEmoji,
 } from "./send.shared.js";
+import type { DiscordReactionSummary, DiscordReactOpts } from "./send.types.js";
 
 export async function reactMessageDiscord(
   channelId: string,

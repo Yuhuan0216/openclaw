@@ -10,8 +10,6 @@ import { buildGatewayConnectionDetails, callGateway } from "../gateway/call.js";
 import { normalizeControlUiBasePath } from "../gateway/control-ui-shared.js";
 import { probeGateway } from "../gateway/probe.js";
 import { resolveOsSummary } from "../infra/os-summary.js";
-import { getTailnetHostname } from "../infra/tailscale.js";
-import { getMemorySearchManager } from "../memory/index.js";
 import type { MemoryProviderStatus } from "../memory/types.js";
 import { runExec } from "../process/exec.js";
 import type { RuntimeEnv } from "../runtime.js";

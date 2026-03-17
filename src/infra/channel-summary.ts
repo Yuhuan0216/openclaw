@@ -1,4 +1,3 @@
-import type { ChannelAccountSnapshot, ChannelPlugin } from "../channels/plugins/types.js";
 import {
   hasConfiguredUnavailableCredentialStatus,
   hasResolvedCredentialValue,
@@ -10,6 +9,7 @@ import {
   resolveChannelAccountEnabled,
 } from "../channels/account-summary.js";
 import { listChannelPlugins } from "../channels/plugins/index.js";
+import type { ChannelAccountSnapshot, ChannelPlugin } from "../channels/plugins/types.js";
 import { inspectReadOnlyChannelAccount } from "../channels/read-only-account-inspect.js";
 import { type OpenClawConfig, loadConfig } from "../config/config.js";
 import { DEFAULT_ACCOUNT_ID } from "../routing/session-key.js";

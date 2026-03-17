@@ -6,9 +6,9 @@ import type { ChannelId } from "../../channels/plugins/types.js";
 import type { OpenClawConfig } from "../../config/config.js";
 import { resolveChannelGroupRequireMention } from "../../config/group-policy.js";
 import type { GroupKeyResolution, SessionEntry } from "../../config/sessions.js";
-import type { TemplateContext } from "../templating.js";
 import { isInternalMessageChannel } from "../../utils/message-channel.js";
 import { normalizeGroupActivation } from "../group-activation.js";
+import type { TemplateContext } from "../templating.js";
 
 function extractGroupId(raw: string | undefined | null): string | undefined {
   const trimmed = (raw ?? "").trim();

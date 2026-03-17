@@ -11,8 +11,8 @@ import {
 import { loadPluginManifestRegistry } from "../plugins/manifest-registry.js";
 import type { OpenClawPluginApi } from "../plugins/types.js";
 import { isPathInsideWithRealpath } from "../security/scan-paths.js";
-import type { InternalHookHandler } from "./internal-hooks.js";
 import { shouldIncludeHook } from "./config.js";
+import type { InternalHookHandler } from "./internal-hooks.js";
 import type { HookEntry } from "./types.js";
 import { loadHookEntriesFromDir } from "./workspace.js";
 

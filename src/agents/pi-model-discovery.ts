@@ -12,6 +12,7 @@ const PiAuthStorageClass = PiCodingAgent.AuthStorage;
 const PiModelRegistryClass = PiCodingAgent.ModelRegistry;
 
 export { PiAuthStorageClass as AuthStorage, PiModelRegistryClass as ModelRegistry };
+export type { PiAuthStorage as AuthStorage, PiModelRegistry as ModelRegistry };
 
 type InMemoryAuthStorageBackendLike = {
   withLock<T>(

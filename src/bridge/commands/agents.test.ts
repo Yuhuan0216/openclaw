@@ -62,7 +62,7 @@ describe("Agents Bridge Commands", () => {
 
       const result = await cmd.handler({}, adminContext);
       expect(result.success).toBe(true);
-      const data = result.data as { agents: any[] };
+      const data = result.data as { agents: Array<{ id: string }> };
       expect(data.agents).toHaveLength(2);
       expect(data.agents[0].id).toBe("main");
     });
@@ -73,7 +73,7 @@ describe("Agents Bridge Commands", () => {
 
       const result = await cmd.handler({}, adminContext);
       expect(result.success).toBe(true);
-      const data = result.data as { agents: any[] };
+      const data = result.data as { agents: Array<{ id: string }> };
       expect(data.agents).toHaveLength(0);
     });
 
@@ -81,7 +81,7 @@ describe("Agents Bridge Commands", () => {
       const cmd = registry.get("agents.list")!;
       const result = await cmd.handler({ filter: "main" }, adminContext);
       expect(result.success).toBe(true);
-      const data = result.data as { agents: any[] };
+      const data = result.data as { agents: Array<{ id: string }> };
       expect(data.agents).toHaveLength(1);
       expect(data.agents[0].id).toBe("main");
     });
@@ -90,7 +90,7 @@ describe("Agents Bridge Commands", () => {
       const cmd = registry.get("agents.list")!;
       const result = await cmd.handler({ filter: "" }, adminContext);
       expect(result.success).toBe(true);
-      const data = result.data as { agents: any[] };
+      const data = result.data as { agents: Array<{ id: string }> };
       expect(data.agents).toHaveLength(2);
     });
 
@@ -107,7 +107,7 @@ describe("Agents Bridge Commands", () => {
       const cmd = registry.get("agents.status")!;
       const result = await cmd.handler({ agentId: "main" }, adminContext);
       expect(result.success).toBe(true);
-      const data = result.data as any;
+      const data = result.data as { sessionKey: string };
       expect(data.sessionKey).toBe("agent:main:session");
     });
 

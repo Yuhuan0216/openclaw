@@ -6,6 +6,7 @@ import type {
   GatewayRequestHandler,
   GatewayRequestHandlers,
 } from "../gateway/server-methods/types.js";
+import { registerInternalHook } from "../hooks/internal-hooks.js";
 import type { HookEntry } from "../hooks/types.js";
 import { resolveUserPath } from "../utils.js";
 import { registerPluginCommand, validatePluginCommandDefinition } from "./commands.js";
@@ -48,7 +49,6 @@ import type {
   SpeechProviderPlugin,
   WebSearchProviderPlugin,
 } from "./types.js";
-import { registerInternalHook } from "../hooks/internal-hooks.js";
 
 export type PluginToolRegistration = {
   pluginId: string;

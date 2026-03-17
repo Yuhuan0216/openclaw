@@ -30,7 +30,7 @@ async function main() {
     try {
       const data = await fs.readFile(STATS_FILE, "utf-8");
       stats = JSON.parse(data);
-    } catch (e) {
+    } catch {
       // File doesn't exist or corrupt, start fresh
       stats = {};
     }
@@ -48,4 +48,4 @@ async function main() {
   }
 }
 
-main();
+main().catch(console.error);

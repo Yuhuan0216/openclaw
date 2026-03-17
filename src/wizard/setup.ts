@@ -1,3 +1,4 @@
+import { formatCliCommand } from "../cli/command-format.js";
 import type {
   GatewayAuthChoice,
   OnboardMode,
@@ -5,7 +6,6 @@ import type {
   ResetScope,
 } from "../commands/onboard-types.js";
 import type { OpenClawConfig } from "../config/config.js";
-import { formatCliCommand } from "../cli/command-format.js";
 import {
   DEFAULT_GATEWAY_PORT,
   readConfigFileSnapshot,

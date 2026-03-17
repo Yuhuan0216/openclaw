@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { TwilioConfig, WebhookSecurityConfig } from "../config.js";
 import { getHeader } from "../http-headers.js";
 import type { MediaStreamHandler } from "../media-stream.js";
+import { chunkAudio } from "../telephony-audio.js";
 import type { TelephonyTtsProvider } from "../telephony-tts.js";
 import type {
   GetCallStatusInput,
@@ -18,9 +19,8 @@ import type {
   WebhookParseOptions,
   WebhookVerificationResult,
 } from "../types.js";
-import type { VoiceCallProvider } from "./base.js";
-import { chunkAudio } from "../telephony-audio.js";
 import { escapeXml, mapVoiceToPolly } from "../voice-mapping.js";
+import type { VoiceCallProvider } from "./base.js";
 import {
   isProviderStatusTerminal,
   mapProviderStatusToEndReason,

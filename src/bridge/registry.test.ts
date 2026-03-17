@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { BridgeCommand } from "./types.js";
 import { CommandBridgeRegistry } from "./registry.js";
+import type { BridgeCommand } from "./types.js";
 
 describe("CommandBridgeRegistry", () => {
   it("should register and retrieve commands", () => {

@@ -6,8 +6,8 @@
  * Usage: bun scripts/scan-trends.ts
  */
 
-import { $ } from "bun";
 import { randomUUID } from "crypto";
+import { $ } from "bun";
 
 const sessionId = randomUUID();
 console.log(`📡 Intel Radar: Initiating Trend Scan (Session: ${sessionId})...`);

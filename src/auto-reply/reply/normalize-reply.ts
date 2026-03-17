@@ -1,4 +1,3 @@
-import type { ReplyPayload } from "../types.js";
 import { sanitizeUserFacingText } from "../../agents/pi-embedded-helpers.js";
 import { hasReplyChannelData, hasReplyContent } from "../../interactive/payload.js";
 import { stripHeartbeatToken } from "../heartbeat.js";
@@ -8,6 +7,7 @@ import {
   SILENT_REPLY_TOKEN,
   stripSilentToken,
 } from "../tokens.js";
+import type { ReplyPayload } from "../types.js";
 import { hasLineDirectives, parseLineDirectives } from "./line-directives.js";
 import {
   resolveResponsePrefixTemplate,

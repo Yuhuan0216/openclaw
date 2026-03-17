@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { BridgeRegistry, BridgeResult } from "../types.js";
 import {
   modelsAuthListLogic,
   type ModelsAuthListOptions,
@@ -9,6 +8,7 @@ import {
   getAuthSwitchContext,
 } from "../../commands/models/auth-switch.logic.js";
 import { modelsListLogic, type ModelsListOptions } from "../../commands/models/list.logic.js";
+import type { BridgeRegistry, BridgeResult } from "../types.js";
 
 // Schemas
 const ModelsListSchema = z.object({

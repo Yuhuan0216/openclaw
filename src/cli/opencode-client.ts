@@ -80,7 +80,7 @@ export class OpenClawClient {
           const response = JSON.parse(stdout);
           resolve(response);
         } catch (err) {
-          reject(new Error(`Failed to parse response: ${err}\nOutput: ${stdout}`));
+          reject(new Error(`Failed to parse response: ${String(err)}\nOutput: ${stdout}`));
         }
       });
 

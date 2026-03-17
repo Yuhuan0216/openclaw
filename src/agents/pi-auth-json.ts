@@ -6,7 +6,6 @@ import {
   resolvePiCredentialMapFromStore,
   type PiCredential,
 } from "./pi-auth-credentials.js";
-import type { AuthProfileCredential } from "./auth-profiles/types.js";
 
 /**
  * @deprecated Legacy bridge for older flows that still expect `agentDir/auth.json`.

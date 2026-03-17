@@ -1,10 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { OnboardOptions } from "../commands/onboard-types.js";
-import type { OpenClawConfig } from "../config/config.js";
-import type { RuntimeEnv } from "../runtime.js";
-import type { GatewayWizardSettings, WizardFlow } from "./setup.types.js";
-import type { WizardPrompter } from "./prompts.js";
 import { DEFAULT_BOOTSTRAP_FILENAME } from "../agents/workspace.js";
 import { formatCliCommand } from "../cli/command-format.js";
 import {
@@ -26,14 +21,19 @@ import {
   waitForGatewayReachable,
   resolveControlUiLinks,
 } from "../commands/onboard-helpers.js";
+import type { OnboardOptions } from "../commands/onboard-types.js";
+import type { OpenClawConfig } from "../config/config.js";
 import { describeGatewayServiceRestart, resolveGatewayService } from "../daemon/service.js";
 import { isSystemdUserServiceAvailable } from "../daemon/systemd.js";
 import { ensureControlUiAssetsBuilt } from "../infra/control-ui-assets.js";
+import type { RuntimeEnv } from "../runtime.js";
 import { restoreTerminalState } from "../terminal/restore.js";
 import { runTui } from "../tui/tui.js";
 import { resolveUserPath } from "../utils.js";
+import type { WizardPrompter } from "./prompts.js";
 import { setupWizardShellCompletion } from "./setup.completion.js";
 import { resolveSetupSecretInputString } from "./setup.secret-input.js";
+import type { GatewayWizardSettings, WizardFlow } from "./setup.types.js";
 
 type FinalizeOnboardingOptions = {
   flow: WizardFlow;

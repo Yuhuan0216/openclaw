@@ -2,13 +2,13 @@ import crypto from "node:crypto";
 import { listAgentIds } from "../../agents/agent-scope.js";
 import { clearBootstrapSnapshotOnSessionRollover } from "../../agents/bootstrap-cache.js";
 import type { MsgContext } from "../../auto-reply/templating.js";
-import type { OpenClawConfig } from "../../config/config.js";
 import {
   normalizeThinkLevel,
   normalizeVerboseLevel,
   type ThinkLevel,
   type VerboseLevel,
 } from "../../auto-reply/thinking.js";
+import type { OpenClawConfig } from "../../config/config.js";
 import {
   evaluateSessionFreshness,
   loadSessionStore,

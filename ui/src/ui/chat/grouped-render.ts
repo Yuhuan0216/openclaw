@@ -568,43 +568,6 @@ function renderMessageImages(images: ImageBlock[]) {
   `;
 }
 
-function renderMessageButtons(
-  buttonRows: Button[][],
-  onButtonClick?: (text: string, payload: string) => void,
-) {
-  if (buttonRows.length === 0) {
-    return nothing;
-  }
-
-  return html`
-    <div class="chat-message-buttons">
-      ${buttonRows.map(
-        (row) => html`
-          <div class="chat-message-buttons-row">
-            ${row.map(
-              (btn) => html`
-                <button
-                  class="btn btn-sm chat-message-button"
-                  type="button"
-                  @click=${() => {
-                    if (btn.url) {
-                      window.open(btn.url, "_blank");
-                    } else if (btn.callback_data && onButtonClick) {
-                      onButtonClick(btn.text, btn.callback_data);
-                    }
-                  }}
-                >
-                  ${btn.text}
-                </button>
-              `,
-            )}
-          </div>
-        `,
-      )}
-    </div>
-  `;
-}
-
 /** Render tool cards inside a collapsed `<details>` element. */
 function renderCollapsedToolCards(
   toolCards: ToolCard[],
@@ -682,7 +645,7 @@ function renderGroupedMessage(
   message: unknown,
   opts: { isStreaming: boolean; showReasoning: boolean; showToolCalls?: boolean },
   onOpenSidebar?: (content: string) => void,
-  onButtonClick?: (text: string, payload: string) => void,
+  _onButtonClick?: (text: string, payload: string) => void,
 ) {
   const m = message as Record<string, unknown>;
   const role = typeof m.role === "string" ? m.role : "unknown";

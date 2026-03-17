@@ -15,12 +15,12 @@ import { formatResolvedUnresolvedNote } from "../../../src/plugin-sdk/resolution
 import { DEFAULT_ACCOUNT_ID } from "../../../src/routing/session-key.js";
 import { formatDocsLink } from "../../../src/terminal/links.js";
 import type { WizardPrompter } from "../../../src/wizard/prompts.js";
-import type { CoreConfig } from "./types.js";
 import { listMatrixDirectoryGroupsLive } from "./directory-live.js";
 import { resolveMatrixAccount } from "./matrix/accounts.js";
 import { ensureMatrixSdkInstalled, isMatrixSdkAvailable } from "./matrix/deps.js";
 import { resolveMatrixTargets } from "./resolve-targets.js";
 import { buildMatrixConfigUpdate, matrixSetupAdapter } from "./setup-core.js";
+import type { CoreConfig } from "./types.js";
 
 const channel = "matrix" as const;
 

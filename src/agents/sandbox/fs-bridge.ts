@@ -9,12 +9,12 @@ import {
 } from "./fs-bridge-mutation-helper.js";
 import { SandboxFsPathGuard } from "./fs-bridge-path-safety.js";
 import { buildStatPlan, type SandboxFsCommandPlan } from "./fs-bridge-shell-command-plans.js";
-import type { SandboxContext, SandboxWorkspaceAccess } from "./types.js";
 import {
   buildSandboxFsMounts,
   resolveSandboxFsPathWithMounts,
   type SandboxResolvedFsPath,
 } from "./fs-paths.js";
+import type { SandboxContext, SandboxWorkspaceAccess } from "./types.js";
 
 type RunCommandOptions = {
   args?: string[];

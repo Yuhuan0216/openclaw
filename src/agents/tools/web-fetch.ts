@@ -1,13 +1,13 @@
 import { Type } from "@sinclair/typebox";
 import type { OpenClawConfig } from "../../config/config.js";
 import { normalizeResolvedSecretInputString } from "../../config/types.secrets.js";
-import type { AnyAgentTool } from "./common.js";
 import { SsrFBlockedError } from "../../infra/net/ssrf.js";
 import { logDebug } from "../../logger.js";
 import type { RuntimeWebFetchFirecrawlMetadata } from "../../secrets/runtime-web-tools.js";
 import { wrapExternalContent, wrapWebContent } from "../../security/external-content.js";
 import { normalizeSecretInput } from "../../utils/normalize-secret-input.js";
 import { stringEnum } from "../schema/typebox.js";
+import type { AnyAgentTool } from "./common.js";
 import { jsonResult, readNumberParam, readStringParam } from "./common.js";
 import {
   extractBasicHtmlContent,

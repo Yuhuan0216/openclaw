@@ -1,5 +1,5 @@
-import { execa } from "execa";
 import { join } from "node:path";
+import { execa } from "execa";
 import { describe, expect, it } from "vitest";
 
 const CLI_PATH = join(process.cwd(), "src/index.ts");
@@ -53,7 +53,7 @@ describe("Command Bridge E2E", () => {
   });
 
   it("should fail on invalid json input", async () => {
-    const { stdout, stderr, exitCode } = await execa("bun", [CLI_PATH, "bridge"], {
+    const { stderr, exitCode } = await execa("bun", [CLI_PATH, "bridge"], {
       input: "invalid-json",
       reject: false,
     });

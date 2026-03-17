@@ -134,17 +134,6 @@ import {
   LogsTailParamsSchema,
   type LogsTailResult,
   LogsTailResultSchema,
-  type MeshPlanAutoParams,
-  MeshPlanAutoParamsSchema,
-  type MeshPlanParams,
-  MeshPlanParamsSchema,
-  type MeshRetryParams,
-  MeshRetryParamsSchema,
-  type MeshRunParams,
-  MeshRunParamsSchema,
-  type MeshStatusParams,
-  MeshStatusParamsSchema,
-  type MeshWorkflowPlan,
   type ModelsListParams,
   ModelsListParamsSchema,
   type NodeDescribeParams,
@@ -431,11 +420,6 @@ export const validateUpdateRunParams = ajv.compile<UpdateRunParams>(UpdateRunPar
 export const validateWebLoginStartParams =
   ajv.compile<WebLoginStartParams>(WebLoginStartParamsSchema);
 export const validateWebLoginWaitParams = ajv.compile<WebLoginWaitParams>(WebLoginWaitParamsSchema);
-export const validateMeshPlanParams = ajv.compile<MeshPlanParams>(MeshPlanParamsSchema);
-export const validateMeshPlanAutoParams = ajv.compile<MeshPlanAutoParams>(MeshPlanAutoParamsSchema);
-export const validateMeshRunParams = ajv.compile<MeshRunParams>(MeshRunParamsSchema);
-export const validateMeshStatusParams = ajv.compile<MeshStatusParams>(MeshStatusParamsSchema);
-export const validateMeshRetryParams = ajv.compile<MeshRetryParams>(MeshRetryParamsSchema);
 
 export function formatValidationErrors(errors: ErrorObject[] | null | undefined) {
   if (!errors?.length) {
@@ -685,10 +669,4 @@ export type {
   PollParams,
   UpdateRunParams,
   ChatInjectParams,
-  MeshWorkflowPlan,
-  MeshPlanParams,
-  MeshPlanAutoParams,
-  MeshRunParams,
-  MeshStatusParams,
-  MeshRetryParams,
 };

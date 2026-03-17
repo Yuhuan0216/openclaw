@@ -1,3 +1,4 @@
+import type { Static } from "@sinclair/typebox";
 import { ProtocolSchemas } from "./protocol-schemas.js";
 
 type ProtocolSchemaName = keyof typeof ProtocolSchemas;

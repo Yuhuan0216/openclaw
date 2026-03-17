@@ -1,6 +1,6 @@
 import { filterToolsByPolicy } from "./pi-tools.policy.js";
-import { isKnownCoreToolId } from "./tool-catalog.js";
 import type { AnyAgentTool } from "./pi-tools.types.js";
+import { isKnownCoreToolId } from "./tool-catalog.js";
 import {
   buildPluginToolGroups,
   expandPolicyWithPluginGroups,

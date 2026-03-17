@@ -26,7 +26,6 @@ import {
   setAccountEnabledInConfigSection,
 } from "openclaw/plugin-sdk/zalouser";
 import { buildPassiveProbedChannelStatusSummary } from "../../shared/channel-status-summary.js";
-import type { ZcaFriend, ZcaGroup, ZcaUserInfo } from "./types.js";
 import {
   listZalouserAccountIds,
   resolveDefaultZalouserAccountId,
@@ -45,7 +44,7 @@ import { sendMessageZalouser, sendReactionZalouser } from "./send.js";
 import { zalouserSetupAdapter } from "./setup-core.js";
 import { zalouserSetupWizard } from "./setup-surface.js";
 import { collectZalouserStatusIssues } from "./status-issues.js";
-import { checkZcaInstalled, parseJsonOutput, runZca, runZcaInteractive } from "./zca.js";
+import type { ZcaFriend, ZcaGroup, ZcaUserInfo } from "./types.js";
 import {
   listZaloFriendsMatching,
   listZaloGroupMembers,
@@ -55,6 +54,7 @@ import {
   waitForZaloQrLogin,
   getZaloUserInfo,
 } from "./zalo-js.js";
+import { checkZcaInstalled, parseJsonOutput, runZca, runZcaInteractive } from "./zca.js";
 
 const meta = {
   id: "zalouser",

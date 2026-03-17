@@ -1,5 +1,3 @@
-import type { OpenClawConfig } from "../../config/config.js";
-import type { ProviderAuthOverview } from "./list.types.js";
 import {
   type AuthProfileHealth,
   buildAuthHealthSummary,
@@ -20,8 +18,10 @@ import {
   resolveEnvApiKey,
   resolveUsableCustomProviderApiKey,
 } from "../../agents/model-auth.js";
+import type { OpenClawConfig } from "../../config/config.js";
 import { shortenHomePath } from "../../utils.js";
 import { maskApiKey } from "./list.format.js";
+import type { ProviderAuthOverview } from "./list.types.js";
 
 export type ProfileDisplayStatus =
   | "ok"

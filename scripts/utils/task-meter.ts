@@ -41,7 +41,9 @@ async function getLatestSessionFile(): Promise<string> {
   const files = await fs.readdir(SESSIONS_DIR);
   const jsonlFiles = files.filter((f) => f.endsWith(".jsonl"));
 
-  if (jsonlFiles.length === 0) throw new Error("No session logs found.");
+  if (jsonlFiles.length === 0) {
+    throw new Error("No session logs found.");
+  }
 
   // Find newest
   let newestFile = "";
@@ -71,7 +73,7 @@ async function getCurrentUsage(filePath: string): Promise<TokenUsage> {
         input += json.usage.inputTokens || 0;
         output += json.usage.outputTokens || 0;
       }
-    } catch (e) {}
+    } catch {}
   }
   return { input, output, total: input + output };
 }
@@ -99,7 +101,7 @@ async function stopTask(taskName: string) {
   let state: MeterState;
   try {
     state = JSON.parse(await fs.readFile(METER_STATE_FILE, "utf-8"));
-  } catch (e) {
+  } catch {
     console.error("❌ No active meter found. Run 'start' first.");
     process.exit(1);
   }
@@ -133,7 +135,7 @@ async function stopTask(taskName: string) {
   let history: TaskRecord[] = [];
   try {
     history = JSON.parse(await fs.readFile(TASK_LOG_FILE, "utf-8"));
-  } catch (e) {}
+  } catch {}
 
   history.push(record);
   await fs.writeFile(TASK_LOG_FILE, JSON.stringify(history, null, 2));
@@ -165,4 +167,4 @@ async function main() {
   }
 }
 
-main();
+main().catch(console.error);

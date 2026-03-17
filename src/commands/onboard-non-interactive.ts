@@ -1,11 +1,11 @@
-import type { OpenClawConfig } from "../config/config.js";
-import type { RuntimeEnv } from "../runtime.js";
-import type { OnboardOptions } from "./onboard-types.js";
 import { formatCliCommand } from "../cli/command-format.js";
+import type { OpenClawConfig } from "../config/config.js";
 import { readConfigFileSnapshot } from "../config/config.js";
+import type { RuntimeEnv } from "../runtime.js";
 import { defaultRuntime } from "../runtime.js";
 import { runNonInteractiveLocalSetup } from "./onboard-non-interactive/local.js";
 import { runNonInteractiveRemoteSetup } from "./onboard-non-interactive/remote.js";
+import type { OnboardOptions } from "./onboard-types.js";
 
 export async function runNonInteractiveSetup(
   opts: OnboardOptions,

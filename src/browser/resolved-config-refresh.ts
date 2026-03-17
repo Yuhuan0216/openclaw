@@ -1,6 +1,6 @@
-import type { BrowserServerState } from "./server-context.types.js";
 import { createConfigIO, getRuntimeConfigSnapshot } from "../config/config.js";
 import { resolveBrowserConfig, resolveProfile, type ResolvedBrowserProfile } from "./config.js";
+import type { BrowserServerState } from "./server-context.types.js";
 
 function changedProfileInvariants(
   current: ResolvedBrowserProfile,
@@ -21,6 +21,9 @@ function changedProfileInvariants(
   }
   if (current.cdpIsLoopback !== next.cdpIsLoopback) {
     changed.push("cdpIsLoopback");
+  }
+  if ((current.userDataDir ?? "") !== (next.userDataDir ?? "")) {
+    changed.push("userDataDir");
   }
   return changed;
 }

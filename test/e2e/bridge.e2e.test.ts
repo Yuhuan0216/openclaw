@@ -1,5 +1,5 @@
-import { execa } from "execa";
 import { join } from "node:path";
+import { execa } from "execa";
 import { describe, expect, it } from "vitest";
 
 const CLI_PATH = join(process.cwd(), "src/index.ts");

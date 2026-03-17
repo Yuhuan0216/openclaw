@@ -1,6 +1,6 @@
-import type { OpenClawConfig } from "../../config/config.js";
 import { upsertAuthProfile } from "../../agents/auth-profiles.js";
 import { normalizeProviderId } from "../../agents/model-selection.js";
+import type { OpenClawConfig } from "../../config/config.js";
 import { applyAuthProfileConfig } from "../onboard-auth.js";
 import { updateConfig } from "./shared.js";
 

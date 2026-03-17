@@ -1,9 +1,9 @@
 import type { Api, Model } from "@mariozechner/pi-ai";
+import type { ModelRegistry } from "@mariozechner/pi-coding-agent";
 import { ensureAuthProfileStore } from "../../agents/auth-profiles.js";
 import { resolveForwardCompatModel } from "../../agents/model-forward-compat.js";
 import { parseModelRef } from "../../agents/model-selection.js";
 import { resolveModel } from "../../agents/pi-embedded-runner/model.js";
-import type { ModelRegistry } from "../../agents/pi-model-discovery.js";
 import { loadConfig, type OpenClawConfig } from "../../config/config.js";
 import { resolveConfiguredEntries } from "./list.configured.js";
 import { loadModelRegistry, toModelRow } from "./list.registry.js";

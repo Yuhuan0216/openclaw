@@ -28,7 +28,6 @@ import type {
   ChannelResolveResult,
   TwitchAccountConfig,
 } from "./types.js";
-import { twitchOnboardingAdapter } from "./onboarding.js";
 import { isAccountConfigured } from "./utils/twitch.js";
 
 /**

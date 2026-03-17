@@ -12,11 +12,11 @@ import {
   type ChannelMessageActionName,
   type ChannelToolSend,
 } from "openclaw/plugin-sdk/bluebubbles";
-import type { BlueBubblesSendTarget } from "./types.js";
 import { resolveBlueBubblesAccount } from "./accounts.js";
 import { getCachedBlueBubblesPrivateApiStatus, isMacOS26OrHigher } from "./probe.js";
 import { normalizeSecretInputString } from "./secret-input.js";
 import { normalizeBlueBubblesHandle, parseBlueBubblesTarget } from "./targets.js";
+import type { BlueBubblesSendTarget } from "./types.js";
 
 let actionsRuntimePromise: Promise<typeof import("./actions.runtime.js")> | null = null;
 

@@ -4,9 +4,8 @@ import type {
   ChannelMessageActionName,
   ChannelPlugin,
 } from "../channels/plugins/types.js";
-import type { OpenClawConfig } from "../config/config.js";
-import { getChannelDock } from "../channels/dock.js";
 import { normalizeAnyChannelId } from "../channels/registry.js";
+import type { OpenClawConfig } from "../config/config.js";
 import { defaultRuntime } from "../runtime.js";
 
 /**

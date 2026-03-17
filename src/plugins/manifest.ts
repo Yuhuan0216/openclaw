@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { PluginConfigUiHint, PluginKind } from "./types.js";
 import { MANIFEST_KEY } from "../compat/legacy-names.js";
 import { openBoundaryFileSync } from "../infra/boundary-file-read.js";
 import { isRecord } from "../utils.js";
+import type { PluginConfigUiHint, PluginKind } from "./types.js";
 
 export const PLUGIN_MANIFEST_FILENAME = "openclaw.plugin.json";
 export const PLUGIN_MANIFEST_FILENAMES = [PLUGIN_MANIFEST_FILENAME] as const;
@@ -242,11 +242,20 @@ export type PluginPackageInstall = {
   defaultChoice?: "npm" | "local";
 };
 
+export type OpenClawPackageStartup = {
+  /**
+   * Opt-in for channel plugins whose `setupEntry` fully covers the gateway
+   * startup surface needed before the server starts listening.
+   */
+  deferConfiguredChannelFullLoadUntilAfterListen?: boolean;
+};
+
 export type OpenClawPackageManifest = {
   extensions?: string[];
   setupEntry?: string;
   channel?: PluginPackageChannel;
   install?: PluginPackageInstall;
+  startup?: OpenClawPackageStartup;
 };
 
 export const DEFAULT_PLUGIN_ENTRY_CANDIDATES = [

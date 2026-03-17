@@ -51,16 +51,24 @@ async function analyzeFile(filePath: string): Promise<SessionStats | null> {
           input += json.usage.inputTokens || 0;
           output += json.usage.outputTokens || 0;
         }
-        if (json.model) model = json.model;
-        if (!timestamp && json.timestamp) timestamp = json.timestamp;
+        if (json.model) {
+          model = json.model;
+        }
+        if (!timestamp && json.timestamp) {
+          timestamp = json.timestamp;
+        }
 
-        if (json.role === "user" || json.role === "model") turns++;
-      } catch (e) {
+        if (json.role === "user" || json.role === "model") {
+          turns++;
+        }
+      } catch {
         // Skip malformed lines
       }
     }
 
-    if (turns === 0) return null; // Empty session
+    if (turns === 0) {
+      return null; // Empty session
+    }
 
     // Fallback: If usage not in logs (older versions), estimate?
     // For now, only count explicit usage.
@@ -73,7 +81,7 @@ async function analyzeFile(filePath: string): Promise<SessionStats | null> {
       model,
       costEstimate: (input / 1000) * PRICE_INPUT_1K + (output / 1000) * PRICE_OUTPUT_1K,
     };
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -99,7 +107,9 @@ async function main() {
 
     for (const { file } of recentFiles) {
       const stats = await analyzeFile(path.join(SESSIONS_DIR, file));
-      if (stats) statsList.push(stats);
+      if (stats) {
+        statsList.push(stats);
+      }
     }
 
     // Aggregations
@@ -132,7 +142,7 @@ Generated: ${new Date().toLocaleString()}
 | Date | Session ID | Model | Turns | Total Tokens | Cost |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 ${statsList
-  .sort((a, b) => b.usage.total - a.usage.total)
+  .toSorted((a, b) => b.usage.total - a.usage.total)
   .slice(0, 10)
   .map(
     (s) =>
@@ -158,4 +168,4 @@ ${statsList
   }
 }
 
-main();
+main().catch(console.error);

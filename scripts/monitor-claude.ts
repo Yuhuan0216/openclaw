@@ -6,8 +6,8 @@
  * Run periodically via cron.
  */
 
-import { $ } from "bun";
 import { randomUUID } from "crypto";
+import { $ } from "bun";
 
 const sessionId = randomUUID();
 console.log(`🔍 Antigravity Auto: Starting Health Check (Session: ${sessionId})...`);

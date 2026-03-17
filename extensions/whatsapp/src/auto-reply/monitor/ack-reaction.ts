@@ -2,8 +2,8 @@ import { shouldAckReactionForWhatsApp } from "../../../../../src/channels/ack-re
 import type { loadConfig } from "../../../../../src/config/config.js";
 import { logVerbose } from "../../../../../src/globals.js";
 import { sendReactionWhatsApp } from "../../send.js";
-import type { WebInboundMsg } from "../types.js";
 import { formatError } from "../../session.js";
+import type { WebInboundMsg } from "../types.js";
 import { resolveGroupActivationFor } from "./group-activation.js";
 
 export function maybeSendAckReaction(params: {

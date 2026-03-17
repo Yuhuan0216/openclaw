@@ -4,8 +4,6 @@ import {
   buildAgentSessionKey,
   deriveLastRoutePolicy,
 } from "../../../../../src/routing/resolve-route.js";
-import type { WebInboundMsg } from "../types.js";
-import type { GroupHistoryEntry } from "./process-message.js";
 import {
   buildAgentMainSessionKey,
   DEFAULT_MAIN_KEY,
@@ -13,6 +11,8 @@ import {
 } from "../../../../../src/routing/session-key.js";
 import { formatError } from "../../session.js";
 import { whatsappInboundLog } from "../loggers.js";
+import type { WebInboundMsg } from "../types.js";
+import type { GroupHistoryEntry } from "./process-message.js";
 
 function buildBroadcastRouteKeys(params: {
   cfg: ReturnType<typeof loadConfig>;

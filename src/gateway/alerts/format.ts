@@ -5,7 +5,7 @@ export interface SystemAlert {
   title: string;
   source: string; // e.g., "cron:job-id"
   details: string;
-  meta?: Record<string, any>;
+  meta?: Record<string, unknown>;
   timestamp?: number;
 }
 
@@ -18,7 +18,7 @@ export function formatAlertMessage(alert: SystemAlert): string {
   // Markdown format for Telegram/Messaging
   let msg = `${icon} **System Alert: ${alert.title}**\n\n`;
 
-  if (alert.meta?.jobName) {
+  if (typeof alert.meta?.jobName === "string") {
     msg += `📦 **Job**: \`${alert.meta.jobName}\`\n`;
   }
 
@@ -26,7 +26,7 @@ export function formatAlertMessage(alert: SystemAlert): string {
   msg += `🕒 **Time**: ${time}\n`;
   msg += `🤖 **Source**: \`${alert.source}\`\n\n`;
 
-  if (alert.meta?.suggestion) {
+  if (typeof alert.meta?.suggestion === "string") {
     msg += `💡 **Suggestion**:\n${alert.meta.suggestion}`;
   } else {
     msg += `💡 **Diagnostics**:\nThe system encountered a critical failure. Agent runtime may be unavailable.`;

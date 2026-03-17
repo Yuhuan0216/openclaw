@@ -16,9 +16,9 @@ import type {
   WebhookParseOptions,
   WebhookVerificationResult,
 } from "../types.js";
-import { guardedJsonApiRequest } from "./shared/guarded-json-api.js";
 import { verifyTelnyxWebhook } from "../webhook-security.js";
 import type { VoiceCallProvider } from "./base.js";
+import { guardedJsonApiRequest } from "./shared/guarded-json-api.js";
 
 /**
  * Telnyx Voice API provider implementation.

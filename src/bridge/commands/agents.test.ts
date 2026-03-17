@@ -107,7 +107,7 @@ describe("Agents Bridge Commands", () => {
       const cmd = registry.get("agents.status")!;
       const result = await cmd.handler({ agentId: "main" }, adminContext);
       expect(result.success).toBe(true);
-      const data = result.data as Record<string, unknown>;
+      const data = result.data as { sessionKey: string };
       expect(data.sessionKey).toBe("agent:main:session");
     });
 

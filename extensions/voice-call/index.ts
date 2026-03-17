@@ -3,7 +3,6 @@ import type {
   GatewayRequestHandlerOptions,
   OpenClawPluginApi,
 } from "openclaw/plugin-sdk/voice-call";
-import type { CoreConfig } from "./src/core-bridge.js";
 import { registerVoiceCallCli } from "./src/cli.js";
 import {
   VoiceCallConfigSchema,
@@ -11,6 +10,7 @@ import {
   validateProviderConfig,
   type VoiceCallConfig,
 } from "./src/config.js";
+import type { CoreConfig } from "./src/core-bridge.js";
 import { createVoiceCallRuntime, type VoiceCallRuntime } from "./src/runtime.js";
 
 const voiceCallConfigSchema = {
@@ -180,6 +180,7 @@ const voiceCallPlugin = {
         runtimePromise = createVoiceCallRuntime({
           config,
           coreConfig: api.config as CoreConfig,
+          agentRuntime: api.runtime.agent,
           ttsRuntime: api.runtime.tts,
           logger: api.logger,
         });

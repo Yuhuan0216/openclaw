@@ -1,10 +1,8 @@
-import type { OpenClawApp } from "./app.ts";
-import type { GatewayHelloOk } from "./gateway.ts";
-import type { ChatAttachment, ChatQueueItem } from "./ui-types.ts";
 import { parseAgentSessionKey } from "../../../src/sessions/session-key-utils.js";
-import { scheduleChatScroll } from "./app-scroll.ts";
+import { scheduleChatScroll, resetChatScroll } from "./app-scroll.ts";
 import { setLastActiveSessionKey } from "./app-settings.ts";
 import { resetToolStream } from "./app-tool-stream.ts";
+import type { OpenClawApp } from "./app.ts";
 import { executeSlashCommand } from "./chat/slash-command-executor.ts";
 import { parseSlashCommand } from "./chat/slash-commands.ts";
 import { abortChatRun, loadChatHistory, sendChatMessage } from "./controllers/chat.ts";
@@ -123,6 +121,8 @@ async function sendChatMessageNow(
   },
 ) {
   resetToolStream(host as unknown as Parameters<typeof resetToolStream>[0]);
+  // Reset scroll state before sending to ensure auto-scroll works for the response
+  resetChatScroll(host as unknown as Parameters<typeof resetChatScroll>[0]);
   const runId = await sendChatMessage(host as unknown as OpenClawApp, message, opts?.attachments);
   const ok = Boolean(runId);
   if (!ok && opts?.previousDraft != null) {
@@ -143,7 +143,8 @@ async function sendChatMessageNow(
   if (ok && opts?.restoreAttachments && opts.previousAttachments?.length) {
     host.chatAttachments = opts.previousAttachments;
   }
-  scheduleChatScroll(host as unknown as Parameters<typeof scheduleChatScroll>[0]);
+  // Force scroll after sending to ensure viewport is at bottom for incoming stream
+  scheduleChatScroll(host as unknown as Parameters<typeof scheduleChatScroll>[0], true);
   if (ok && !host.chatRunId) {
     void flushChatQueue(host);
   }

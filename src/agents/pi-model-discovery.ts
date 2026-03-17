@@ -11,8 +11,10 @@ import { resolvePiCredentialMapFromStore, type PiCredentialMap } from "./pi-auth
 const PiAuthStorageClass = PiCodingAgent.AuthStorage;
 const PiModelRegistryClass = PiCodingAgent.ModelRegistry;
 
-export { PiAuthStorageClass as AuthStorage, PiModelRegistryClass as ModelRegistry };
-export type { PiAuthStorage as AuthStorage, PiModelRegistry as ModelRegistry };
+export const AuthStorage = PiAuthStorageClass;
+export type AuthStorage = PiAuthStorage;
+export const ModelRegistry = PiModelRegistryClass;
+export type ModelRegistry = PiModelRegistry;
 
 type InMemoryAuthStorageBackendLike = {
   withLock<T>(

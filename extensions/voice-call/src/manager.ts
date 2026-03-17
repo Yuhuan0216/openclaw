@@ -3,8 +3,6 @@ import os from "node:os";
 import path from "node:path";
 import type { VoiceCallConfig } from "./config.js";
 import type { CallManagerContext } from "./manager/context.js";
-import type { VoiceCallProvider } from "./providers/base.js";
-import type { CallId, CallRecord, NormalizedEvent, OutboundCallOptions } from "./types.js";
 import { processEvent as processManagerEvent } from "./manager/events.js";
 import { getCallByProviderCallId as getCallByProviderCallIdFromMaps } from "./manager/lookup.js";
 import {

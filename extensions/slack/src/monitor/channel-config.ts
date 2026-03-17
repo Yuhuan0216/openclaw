@@ -1,5 +1,3 @@
-import type { SlackReactionNotificationMode } from "../../config/config.js";
-import type { SlackMessageEvent } from "../types.js";
 import {
   applyChannelMatchMeta,
   buildChannelKeyCandidates,

@@ -1,6 +1,6 @@
-import { type OpenClawConfig, loadConfig } from "../../config/config.js";
 import path from "node:path";
 import { Type } from "@sinclair/typebox";
+import { type OpenClawConfig, loadConfig } from "../../config/config.js";
 import {
   resolveSessionFilePath,
   resolveSessionFilePathOptions,
@@ -8,7 +8,7 @@ import {
 } from "../../config/sessions.js";
 import { callGateway } from "../../gateway/call.js";
 import { resolveAgentIdFromSessionKey } from "../../routing/session-key.js";
-import { jsonResult, readStringArrayParam } from "./common.js";
+import { type AnyAgentTool, jsonResult, readStringArrayParam } from "./common.js";
 import {
   createSessionVisibilityGuard,
   createAgentToAgentPolicy,

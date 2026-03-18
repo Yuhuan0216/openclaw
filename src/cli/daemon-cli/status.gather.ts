@@ -3,6 +3,7 @@ import {
   resolveConfigPath,
   resolveGatewayPort,
   resolveStateDir,
+  type OpenClawConfig,
 } from "../../config/config.js";
 import type { GatewayBindMode, GatewayControlUiConfig } from "../../config/types.js";
 import { readLastGatewayErrorLine } from "../../daemon/diagnostics.js";

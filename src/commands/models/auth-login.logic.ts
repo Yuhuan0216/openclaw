@@ -8,9 +8,9 @@ import type { AuthProfileCredential } from "../../agents/auth-profiles/types.js"
 import { resolveDefaultAgentWorkspaceDir } from "../../agents/workspace.js";
 import { formatCliCommand } from "../../cli/command-format.js";
 import { readConfigFileSnapshot } from "../../config/config.js";
+import { applyAuthProfileConfig } from "../../plugins/provider-auth-helpers.js";
 import { resolvePluginProviders } from "../../plugins/providers.js";
 import type { ProviderAuthResult, ProviderPlugin } from "../../plugins/types.js";
-import { applyAuthProfileConfig } from "../onboard-auth.js";
 import {
   applyDefaultModel,
   mergeConfigPatch,

@@ -44,7 +44,7 @@ import { sendMessageZalouser, sendReactionZalouser } from "./send.js";
 import { zalouserSetupAdapter } from "./setup-core.js";
 import { zalouserSetupWizard } from "./setup-surface.js";
 import { collectZalouserStatusIssues } from "./status-issues.js";
-import type { ZcaFriend, ZcaGroup, ZcaUserInfo } from "./types.js";
+import type { ZcaFriend, ZaloGroup, ZcaUserInfo } from "./types.js";
 import {
   listZaloFriendsMatching,
   listZaloGroupMembers,
@@ -54,7 +54,6 @@ import {
   waitForZaloQrLogin,
   getZaloUserInfo,
 } from "./zalo-js.js";
-import { checkZcaInstalled, parseJsonOutput, runZca, runZcaInteractive } from "./zca.js";
 
 const meta = {
   id: "zalouser",

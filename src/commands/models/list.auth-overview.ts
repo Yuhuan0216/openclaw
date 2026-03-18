@@ -108,7 +108,7 @@ export function resolveProfileDisplayInfos(params: {
     if (type === "api_key") {
       detail = maskApiKey(cred?.type === "api_key" ? (cred.key ?? "") : "");
     } else if (type === "token") {
-      detail = cred?.type === "token" ? maskApiKey(cred.token) : "";
+      detail = cred?.type === "token" ? maskApiKey(cred.token ?? "") : "";
     } else {
       detail = email ?? "";
     }

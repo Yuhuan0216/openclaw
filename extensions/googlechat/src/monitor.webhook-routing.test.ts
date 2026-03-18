@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events";
 import type { IncomingMessage } from "node:http";
 import type { OpenClawConfig, PluginRuntime } from "openclaw/plugin-sdk/googlechat";
 import { afterEach, describe, expect, it, vi } from "vitest";

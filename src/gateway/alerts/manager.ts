@@ -49,7 +49,9 @@ export class AlertManager {
 
     try {
       // 1. Try Telegram (Primary)
-      await this.deps.sendMessageTelegram(targetUser, messageText);
+      await (
+        this.deps as { sendMessageTelegram: (to: string, text: string) => Promise<void> }
+      ).sendMessageTelegram(targetUser, messageText);
     } catch (err) {
       logger.error({ err }, "alerts: failed to send to telegram");
       // TODO: Add fallbacks for Signal/WhatsApp here if needed

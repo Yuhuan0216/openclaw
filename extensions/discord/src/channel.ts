@@ -1,16 +1,20 @@
 import { Separator, TextDisplay } from "@buape/carbon";
-import { resolveOutboundSendDep } from "../../../src/infra/outbound/send-deps.js";
 import {
   buildAccountScopedAllowlistConfigEditor,
+  resolveLegacyDmAllowlistConfigPaths,
+} from "openclaw/plugin-sdk/allowlist-config-edit";
+import {
   buildAccountScopedDmSecurityPolicy,
   collectOpenGroupPolicyConfiguredRouteWarnings,
   collectOpenProviderGroupPolicyWarnings,
-} from "../../../src/plugin-sdk-internal/channel-config.js";
+} from "openclaw/plugin-sdk/channel-config-helpers";
+import { resolveOutboundSendDep } from "openclaw/plugin-sdk/channel-runtime";
+import { normalizeMessageChannel } from "openclaw/plugin-sdk/channel-runtime";
 import {
   buildAgentSessionKey,
   resolveThreadSessionKeys,
   type RoutePeer,
-} from "../../../src/plugin-sdk-internal/core.js";
+} from "openclaw/plugin-sdk/core";
 import {
   buildComputedAccountStatusSnapshot,
   buildChannelConfigSchema,
@@ -28,8 +32,7 @@ import {
   type ChannelMessageActionAdapter,
   type ChannelPlugin,
   type OpenClawConfig,
-} from "../../../src/plugin-sdk-internal/discord.js";
-import { normalizeMessageChannel } from "../../../src/utils/message-channel.js";
+} from "openclaw/plugin-sdk/discord";
 import {
   listDiscordAccountIds,
   resolveDiscordAccount,
@@ -347,14 +350,7 @@ export const discordPlugin: ChannelPlugin<ResolvedDiscordAccount> = {
       channelId: "discord",
       normalize: ({ cfg, accountId, values }) =>
         discordConfigAccessors.formatAllowFrom!({ cfg, accountId, allowFrom: values }),
-      resolvePaths: (scope) =>
-        scope === "dm"
-          ? {
-              readPaths: [["allowFrom"], ["dm", "allowFrom"]],
-              writePath: ["allowFrom"],
-              cleanupPaths: [["dm", "allowFrom"]],
-            }
-          : null,
+      resolvePaths: resolveLegacyDmAllowlistConfigPaths,
     }),
   },
   security: {

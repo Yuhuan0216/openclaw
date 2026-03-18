@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { WebSocket } from "ws";
 import { getChannelPlugin } from "../channels/plugins/index.js";
-import type { ChannelOutboundAdapter } from "../channels/plugins/types.js";
+import type { ChannelOutboundAdapter, OutboundDeliveryResult } from "../channels/plugins/types.js";
 import { resolveCanvasHostUrl } from "../infra/canvas-host-url.js";
 import { GatewayLockError } from "../infra/gateway-lock.js";
 import { getActivePluginRegistry, setActivePluginRegistry } from "../plugins/runtime.js";
@@ -13,32 +13,23 @@ import { createOutboundTestPlugin } from "../test-utils/channel-plugins.js";
 import { captureEnv } from "../test-utils/env.js";
 import { GATEWAY_CLIENT_MODES, GATEWAY_CLIENT_NAMES } from "../utils/message-channel.js";
 import { createRegistry } from "./server.e2e-registry-helpers.js";
-import {
-  connectOk,
-  getFreePort,
-  installGatewayTestHooks,
-  occupyPort,
-  onceMessage,
-  piSdkMock,
-  rpcReq,
-  startGatewayServer,
-  startServerWithClient,
-  testState,
-  testTailnetIPv4,
-} from "./test-helpers.js";
+import * as mocks from "./test-helpers.mocks.js";
+import * as serverHelpers from "./test-helpers.server.js";
 
-installGatewayTestHooks({ scope: "suite" });
+const { piSdkMock, testState, testTailnetIPv4 } = mocks;
 
-let server: Awaited<ReturnType<typeof startServerWithClient>>["server"];
+serverHelpers.installGatewayTestHooks({ scope: "suite" });
+
+let server: Awaited<ReturnType<typeof serverHelpers.startServerWithClient>>["server"];
 let ws: WebSocket;
 let port: number;
 
 beforeAll(async () => {
-  const started = await startServerWithClient();
+  const started = await serverHelpers.startServerWithClient();
   server = started.server;
   ws = started.ws;
   port = started.port;
-  await connectOk(ws);
+  await serverHelpers.connectOk(ws);
 });
 
 afterAll(async () => {
@@ -49,19 +40,40 @@ afterAll(async () => {
 const whatsappOutbound: ChannelOutboundAdapter = {
   deliveryMode: "direct",
   sendText: async ({ deps, to, text }) => {
-    if (!deps?.sendWhatsApp) {
-      throw new Error("Missing sendWhatsApp dep");
-    }
-    return { channel: "whatsapp", ...(await deps.sendWhatsApp(to, text, { verbose: false })) };
-  },
-  sendMedia: async ({ deps, to, text, mediaUrl }) => {
-    if (!deps?.sendWhatsApp) {
+    if (!(deps as { sendWhatsApp?: unknown })?.sendWhatsApp) {
       throw new Error("Missing sendWhatsApp dep");
     }
     return {
       channel: "whatsapp",
-      ...(await deps.sendWhatsApp(to, text, { verbose: false, mediaUrl })),
-    };
+      messageId: "test-id",
+      ...(await (
+        deps as {
+          sendWhatsApp: (
+            to: string,
+            text: string,
+            opts: { verbose: boolean },
+          ) => Promise<Record<string, unknown>>;
+        }
+      ).sendWhatsApp(to, text, { verbose: false })),
+    } as OutboundDeliveryResult;
+  },
+  sendMedia: async ({ deps, to, text, mediaUrl }) => {
+    if (!(deps as { sendWhatsApp?: unknown })?.sendWhatsApp) {
+      throw new Error("Missing sendWhatsApp dep");
+    }
+    return {
+      channel: "whatsapp",
+      messageId: "test-id",
+      ...(await (
+        deps as {
+          sendWhatsApp: (
+            to: string,
+            text: string,
+            opts: { verbose: boolean; mediaUrl?: string },
+          ) => Promise<Record<string, unknown>>;
+        }
+      ).sendWhatsApp(to, text, { verbose: false, mediaUrl })),
+    } as OutboundDeliveryResult;
   },
 };
 
@@ -133,16 +145,16 @@ describe("gateway server models + voicewake", () => {
       const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-home-"));
       const restoreHome = setTempHome(homeDir);
 
-      const initial = await rpcReq<{ triggers: string[] }>(ws, "voicewake.get");
+      const initial = await serverHelpers.rpcReq<{ triggers: string[] }>(ws, "voicewake.get");
       expect(initial.ok).toBe(true);
       expect(initial.payload?.triggers).toEqual(["openclaw", "claude", "computer"]);
 
-      const changedP = onceMessage(
+      const changedP = serverHelpers.onceMessage(
         ws,
         (o) => o.type === "event" && o.event === "voicewake.changed",
       );
 
-      const setRes = await rpcReq<{ triggers: string[] }>(ws, "voicewake.set", {
+      const setRes = await serverHelpers.rpcReq<{ triggers: string[] }>(ws, "voicewake.set", {
         triggers: ["  hi  ", "", "there"],
       });
       expect(setRes.ok).toBe(true);
@@ -155,7 +167,7 @@ describe("gateway server models + voicewake", () => {
         "there",
       ]);
 
-      const after = await rpcReq<{ triggers: string[] }>(ws, "voicewake.get");
+      const after = await serverHelpers.rpcReq<{ triggers: string[] }>(ws, "voicewake.get");
       expect(after.ok).toBe(true);
       expect(after.payload?.triggers).toEqual(["hi", "there"]);
 
@@ -175,11 +187,11 @@ describe("gateway server models + voicewake", () => {
 
     const nodeWs = new WebSocket(`ws://127.0.0.1:${port}`);
     await new Promise<void>((resolve) => nodeWs.once("open", resolve));
-    const firstEventP = onceMessage(
+    const firstEventP = serverHelpers.onceMessage(
       nodeWs,
       (o) => o.type === "event" && o.event === "voicewake.changed",
     );
-    await connectOk(nodeWs, {
+    await serverHelpers.connectOk(nodeWs, {
       role: "node",
       client: {
         id: GATEWAY_CLIENT_NAMES.NODE_HOST,
@@ -197,11 +209,11 @@ describe("gateway server models + voicewake", () => {
       "computer",
     ]);
 
-    const broadcastP = onceMessage(
+    const broadcastP = serverHelpers.onceMessage(
       nodeWs,
       (o) => o.type === "event" && o.event === "voicewake.changed",
     );
-    const setRes = await rpcReq<{ triggers: string[] }>(ws, "voicewake.set", {
+    const setRes = await serverHelpers.rpcReq<{ triggers: string[] }>(ws, "voicewake.set", {
       triggers: ["openclaw", "computer"],
     });
     expect(setRes.ok).toBe(true);
@@ -241,7 +253,7 @@ describe("gateway server models + voicewake", () => {
       },
     ];
 
-    const res1 = await rpcReq<{
+    const res1 = await serverHelpers.rpcReq<{
       models: Array<{
         id: string;
         name: string;
@@ -250,7 +262,7 @@ describe("gateway server models + voicewake", () => {
       }>;
     }>(ws, "models.list");
 
-    const res2 = await rpcReq<{
+    const res2 = await serverHelpers.rpcReq<{
       models: Array<{
         id: string;
         name: string;
@@ -296,7 +308,7 @@ describe("gateway server models + voicewake", () => {
     piSdkMock.enabled = true;
     piSdkMock.models = [{ id: "gpt-test-a", name: "A", provider: "openai" }];
 
-    const res = await rpcReq(ws, "models.list", { extra: true });
+    const res = await serverHelpers.rpcReq(ws, "models.list", { extra: true });
     expect(res.ok).toBe(false);
     expect(res.error?.message ?? "").toMatch(/invalid models\.list params/i);
   });
@@ -309,11 +321,11 @@ describe("gateway server misc", () => {
       process.env.OPENCLAW_GATEWAY_TOKEN = "secret";
       testTailnetIPv4.value = "100.64.0.1";
       testState.gatewayBind = "lan";
-      const canvasPort = await getFreePort();
+      const canvasPort = await serverHelpers.getFreePort();
       testState.canvasHostPort = canvasPort;
       process.env.OPENCLAW_CANVAS_HOST_PORT = String(canvasPort);
 
-      const testPort = await getFreePort();
+      const testPort = await serverHelpers.getFreePort();
       const canvasHostUrl = resolveCanvasHostUrl({
         canvasPort,
         requestHost: `100.64.0.1:${testPort}`,
@@ -332,8 +344,8 @@ describe("gateway server misc", () => {
       expect(getChannelPlugin("whatsapp")).toBeDefined();
 
       const idem = "same-key";
-      const res1P = onceMessage(ws, (o) => o.type === "res" && o.id === "a1");
-      const res2P = onceMessage(ws, (o) => o.type === "res" && o.id === "a2");
+      const res1P = serverHelpers.onceMessage(ws, (o) => o.type === "res" && o.id === "a1");
+      const res2P = serverHelpers.onceMessage(ws, (o) => o.type === "res" && o.id === "a2");
       const sendReq = (id: string) =>
         ws.send(
           JSON.stringify({
@@ -378,8 +390,8 @@ describe("gateway server misc", () => {
       "utf-8",
     );
 
-    const autoPort = await getFreePort();
-    const autoServer = await startGatewayServer(autoPort);
+    const autoPort = await serverHelpers.getFreePort();
+    const autoServer = await serverHelpers.startGatewayServer(autoPort);
     await autoServer.close();
 
     const updated = JSON.parse(await fs.readFile(configPath, "utf-8")) as Record<string, unknown>;
@@ -393,15 +405,19 @@ describe("gateway server misc", () => {
   });
 
   test("refuses to start when port already bound", async () => {
-    const { server: blocker, port: blockedPort } = await occupyPort();
-    await expect(startGatewayServer(blockedPort)).rejects.toBeInstanceOf(GatewayLockError);
-    await expect(startGatewayServer(blockedPort)).rejects.toThrow(/already listening/i);
+    const { server: blocker, port: blockedPort } = await serverHelpers.occupyPort();
+    await expect(serverHelpers.startGatewayServer(blockedPort)).rejects.toBeInstanceOf(
+      GatewayLockError,
+    );
+    await expect(serverHelpers.startGatewayServer(blockedPort)).rejects.toThrow(
+      /already listening/i,
+    );
     blocker.close();
   });
 
   test("releases port after close", async () => {
-    const releasePort = await getFreePort();
-    const releaseServer = await startGatewayServer(releasePort);
+    const releasePort = await serverHelpers.getFreePort();
+    const releaseServer = await serverHelpers.startGatewayServer(releasePort);
     await releaseServer.close();
 
     const probe = createServer();

@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import { buildChannelSetupWizardAdapterFromSetupWizard } from "../../../src/channels/plugins/setup-wizard.js";
 import { createRuntimeEnv } from "../../test-utils/runtime-env.js";
 import { ircPlugin } from "./channel.js";
-import { ircOnboardingAdapter } from "./onboarding.js";
 import type { CoreConfig } from "./types.js";
 
 const selectFirstOption = async <T>(params: { options: Array<{ value: T }> }): Promise<T> => {

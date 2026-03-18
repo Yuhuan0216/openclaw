@@ -8,8 +8,8 @@ import {
   ensureCompletionCacheExists,
 } from "../commands/doctor-completion.js";
 import { pathExists } from "../utils.js";
-import type { WizardFlow } from "./onboarding.types.js";
 import type { WizardPrompter } from "./prompts.js";
+import type { WizardFlow } from "./setup.types.js";
 
 type CompletionDeps = {
   resolveCliName: () => string;

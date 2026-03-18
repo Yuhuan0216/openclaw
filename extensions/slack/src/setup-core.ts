@@ -1,7 +1,6 @@
 import {
   applyAccountNameToChannelSection,
   DEFAULT_ACCOUNT_ID,
-  formatDocsLink,
   hasConfiguredSecretInput,
   migrateBaseNameToDefaultAccount,
   normalizeAccountId,
@@ -13,13 +12,16 @@ import {
   setAccountGroupPolicyForChannel,
   setLegacyChannelDmPolicyWithAllowFrom,
   setSetupChannelEnabled,
-} from "../../../src/plugin-sdk-internal/setup.js";
+} from "openclaw/plugin-sdk/setup";
 import {
   type ChannelSetupAdapter,
   type ChannelSetupDmPolicy,
   type ChannelSetupWizard,
   type ChannelSetupWizardAllowFromEntry,
-} from "../../../src/plugin-sdk-internal/setup.js";
+} from "openclaw/plugin-sdk/setup";
+import { createPatchedAccountSetupAdapter } from "../../../src/channels/plugins/setup-helpers.js";
+import { createAllowlistSetupWizardProxy } from "../../../src/channels/plugins/setup-wizard-proxy.js";
+import { formatDocsLink } from "../../../src/terminal/links.js";
 import { inspectSlackAccount } from "./account-inspect.js";
 import { listSlackAccountIds, resolveSlackAccount, type ResolvedSlackAccount } from "./accounts.js";
 import {
@@ -110,9 +112,26 @@ export const slackSetupAdapter: ChannelSetupAdapter = {
   },
 };
 
-export function createSlackSetupWizardProxy(
-  loadWizard: () => Promise<{ slackSetupWizard: ChannelSetupWizard }>,
-) {
+export function createSlackSetupWizardBase(handlers: {
+  promptAllowFrom: (params: {
+    cfg: OpenClawConfig;
+    prompter: any;
+    accountId?: string;
+  }) => Promise<OpenClawConfig>;
+  resolveAllowFromEntries: (params: {
+    cfg: OpenClawConfig;
+    accountId: string;
+    credentialValues: { botToken?: string };
+    entries: string[];
+  }) => Promise<Array<{ input: string; resolved: boolean; id: string | null }>>;
+  resolveGroupAllowlist: (params: {
+    cfg: OpenClawConfig;
+    accountId: string;
+    credentialValues: { botToken?: string };
+    entries: string[];
+    prompter: any;
+  }) => Promise<string[]>;
+}) {
   const slackDmPolicy: ChannelSetupDmPolicy = {
     label: "Slack",
     channel,
@@ -126,13 +145,7 @@ export function createSlackSetupWizardProxy(
         channel,
         dmPolicy: policy,
       }),
-    promptAllowFrom: async ({ cfg, prompter, accountId }) => {
-      const wizard = (await loadWizard()).slackSetupWizard;
-      if (!wizard.dmPolicy?.promptAllowFrom) {
-        return cfg;
-      }
-      return await wizard.dmPolicy.promptAllowFrom({ cfg, prompter, accountId });
-    },
+    promptAllowFrom: handlers.promptAllowFrom,
   };
 
   return {
@@ -273,28 +286,7 @@ export function createSlackSetupWizardProxy(
           idPattern: /^[A-Z][A-Z0-9]+$/i,
           normalizeId: (id) => id.toUpperCase(),
         }),
-      resolveEntries: async ({
-        cfg,
-        accountId,
-        credentialValues,
-        entries,
-      }: {
-        cfg: OpenClawConfig;
-        accountId: string;
-        credentialValues: { botToken?: string };
-        entries: string[];
-      }) => {
-        const wizard = (await loadWizard()).slackSetupWizard;
-        if (!wizard.allowFrom) {
-          return entries.map((input) => ({ input, resolved: false, id: null }));
-        }
-        return await wizard.allowFrom.resolveEntries({
-          cfg,
-          accountId,
-          credentialValues,
-          entries,
-        });
-      },
+      resolveEntries: handlers.resolveAllowFromEntries,
       apply: ({
         cfg,
         accountId,
@@ -351,11 +343,7 @@ export function createSlackSetupWizardProxy(
         prompter: { note: (message: string, title?: string) => Promise<void> };
       }) => {
         try {
-          const wizard = (await loadWizard()).slackSetupWizard;
-          if (!wizard.groupAccess?.resolveAllowlist) {
-            return entries;
-          }
-          return await wizard.groupAccess.resolveAllowlist({
+          return await handlers.resolveGroupAllowlist({
             cfg,
             accountId,
             credentialValues,
@@ -389,4 +377,13 @@ export function createSlackSetupWizardProxy(
     },
     disable: (cfg: OpenClawConfig) => setSetupChannelEnabled(cfg, channel, false),
   } satisfies ChannelSetupWizard;
+}
+export function createSlackSetupWizardProxy(
+  loadWizard: () => Promise<{ slackSetupWizard: ChannelSetupWizard }>,
+) {
+  return createAllowlistSetupWizardProxy({
+    loadWizard: async () => (await loadWizard()).slackSetupWizard,
+    createBase: createSlackSetupWizardBase,
+    fallbackResolvedGroupAllowlist: (entries) => entries,
+  });
 }

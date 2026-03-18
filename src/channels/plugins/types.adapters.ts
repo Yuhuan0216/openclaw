@@ -4,6 +4,7 @@ import type { AgentAcpBinding } from "../../config/types.js";
 import type { GroupToolPolicyConfig } from "../../config/types.tools.js";
 import type { ExecApprovalRequest, ExecApprovalResolved } from "../../infra/exec-approvals.js";
 import type { OutboundDeliveryResult, OutboundSendDeps } from "../../infra/outbound/deliver.js";
+export type { OutboundDeliveryResult };
 import type { OutboundIdentity } from "../../infra/outbound/identity.js";
 import type { PluginRuntime } from "../../plugins/runtime/types.js";
 import type { RuntimeEnv } from "../../runtime.js";

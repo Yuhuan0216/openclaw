@@ -1,7 +1,6 @@
 import type { Api, Model } from "@mariozechner/pi-ai";
 import type { ModelRegistry } from "@mariozechner/pi-coding-agent";
 import { ensureAuthProfileStore } from "../../agents/auth-profiles.js";
-import { resolveForwardCompatModel } from "../../agents/model-forward-compat.js";
 import { parseModelRef } from "../../agents/model-selection.js";
 import { resolveModel } from "../../agents/pi-embedded-runner/model.js";
 import { loadConfig, type OpenClawConfig } from "../../config/config.js";
@@ -91,17 +90,6 @@ export async function modelsListLogic(
         continue;
       }
       let model = modelByKey.get(entry.key);
-      if (!model && modelRegistry) {
-        const forwardCompat = resolveForwardCompatModel(
-          entry.ref.provider,
-          entry.ref.model,
-          modelRegistry,
-        );
-        if (forwardCompat) {
-          model = forwardCompat;
-          modelByKey.set(entry.key, forwardCompat);
-        }
-      }
       if (!model && modelRegistry) {
         model = resolveModel(entry.ref.provider, entry.ref.model, undefined, cfg).model;
       }

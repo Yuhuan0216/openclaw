@@ -1,8 +1,7 @@
-import type { DiscordGuildEntry } from "../../../src/config/types.discord.js";
+import type { DiscordGuildEntry } from "openclaw/plugin-sdk/config-runtime";
 import {
   applyAccountNameToChannelSection,
   DEFAULT_ACCOUNT_ID,
-  formatDocsLink,
   migrateBaseNameToDefaultAccount,
   normalizeAccountId,
   noteChannelLookupFailure,
@@ -12,12 +11,15 @@ import {
   setLegacyChannelDmPolicyWithAllowFrom,
   setSetupChannelEnabled,
   type OpenClawConfig,
-} from "../../../src/plugin-sdk-internal/setup.js";
+} from "openclaw/plugin-sdk/setup";
 import {
   type ChannelSetupAdapter,
   type ChannelSetupDmPolicy,
   type ChannelSetupWizard,
-} from "../../../src/plugin-sdk-internal/setup.js";
+} from "openclaw/plugin-sdk/setup";
+import { createPatchedAccountSetupAdapter } from "../../../src/channels/plugins/setup-helpers.js";
+import { createAllowlistSetupWizardProxy } from "../../../src/channels/plugins/setup-wizard-proxy.js";
+import { formatDocsLink } from "../../../src/terminal/links.js";
 import { inspectDiscordAccount } from "./account-inspect.js";
 import { listDiscordAccountIds, resolveDiscordAccount } from "./accounts.js";
 
@@ -138,9 +140,26 @@ export const discordSetupAdapter: ChannelSetupAdapter = {
   },
 };
 
-export function createDiscordSetupWizardProxy(
-  loadWizard: () => Promise<{ discordSetupWizard: ChannelSetupWizard }>,
-) {
+export function createDiscordSetupWizardBase(handlers: {
+  promptAllowFrom: (params: {
+    cfg: OpenClawConfig;
+    prompter: any;
+    accountId?: string;
+  }) => Promise<OpenClawConfig>;
+  resolveAllowFromEntries: (params: {
+    cfg: OpenClawConfig;
+    accountId: string;
+    credentialValues: { token?: string };
+    entries: string[];
+  }) => Promise<Array<{ input: string; resolved: boolean; id: string | null }>>;
+  resolveGroupAllowlist: (params: {
+    cfg: OpenClawConfig;
+    accountId: string;
+    credentialValues: { token?: string };
+    entries: string[];
+    prompter: any;
+  }) => Promise<Array<{ guildKey: string; channelKey?: string }>>;
+}) {
   const discordDmPolicy: ChannelSetupDmPolicy = {
     label: "Discord",
     channel,
@@ -154,13 +173,7 @@ export function createDiscordSetupWizardProxy(
         channel,
         dmPolicy: policy,
       }),
-    promptAllowFrom: async ({ cfg, prompter, accountId }) => {
-      const wizard = (await loadWizard()).discordSetupWizard;
-      if (!wizard.dmPolicy?.promptAllowFrom) {
-        return cfg;
-      }
-      return await wizard.dmPolicy.promptAllowFrom({ cfg, prompter, accountId });
-    },
+    promptAllowFrom: handlers.promptAllowFrom,
   };
 
   return {
@@ -251,12 +264,8 @@ export function createDiscordSetupWizardProxy(
         entries: string[];
         prompter: { note: (message: string, title?: string) => Promise<void> };
       }) => {
-        const wizard = (await loadWizard()).discordSetupWizard;
-        if (!wizard.groupAccess?.resolveAllowlist) {
-          return entries.map((input) => ({ input, resolved: false }));
-        }
         try {
-          return await wizard.groupAccess.resolveAllowlist({
+          return await handlers.resolveGroupAllowlist({
             cfg,
             accountId,
             credentialValues,
@@ -275,7 +284,7 @@ export function createDiscordSetupWizardProxy(
             resolvedSections: [],
             unresolved: entries,
           });
-          return entries.map((input) => ({ input, resolved: false }));
+          return entries.map((input) => ({ guildKey: input, resolved: false }));
         }
       },
       applyAllowlist: ({
@@ -305,28 +314,7 @@ export function createDiscordSetupWizardProxy(
       invalidWithoutCredentialNote:
         "Bot token missing; use numeric user ids (or mention form) only.",
       parseId: parseDiscordAllowFromId,
-      resolveEntries: async ({
-        cfg,
-        accountId,
-        credentialValues,
-        entries,
-      }: {
-        cfg: OpenClawConfig;
-        accountId: string;
-        credentialValues: { token?: string };
-        entries: string[];
-      }) => {
-        const wizard = (await loadWizard()).discordSetupWizard;
-        if (!wizard.allowFrom) {
-          return entries.map((input) => ({ input, resolved: false, id: null }));
-        }
-        return await wizard.allowFrom.resolveEntries({
-          cfg,
-          accountId,
-          credentialValues,
-          entries,
-        });
-      },
+      resolveEntries: handlers.resolveAllowFromEntries,
       apply: async ({
         cfg,
         accountId,
@@ -346,4 +334,15 @@ export function createDiscordSetupWizardProxy(
     dmPolicy: discordDmPolicy,
     disable: (cfg: OpenClawConfig) => setSetupChannelEnabled(cfg, channel, false),
   } satisfies ChannelSetupWizard;
+}
+
+export function createDiscordSetupWizardProxy(
+  loadWizard: () => Promise<{ discordSetupWizard: ChannelSetupWizard }>,
+) {
+  return createAllowlistSetupWizardProxy({
+    loadWizard: async () => (await loadWizard()).discordSetupWizard,
+    createBase: createDiscordSetupWizardBase,
+    fallbackResolvedGroupAllowlist: (entries) =>
+      entries.map((input) => ({ guildKey: input, resolved: false })),
+  });
 }
